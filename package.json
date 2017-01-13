@@ -1,0 +1,18 @@
+{
+    "name": "wi-ide-file",
+    "version": "0.0.3",
+    "description": "WebIDE files management module",
+    "author": "André Ferreira <andrehrf@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jsrun/wi.ide.file"
+    },
+    "bugs": {
+        "url": "https://github.com/jsrun/wi.ide.file/issues"
+    },
+    "homepage": "https://github.com/jsrun/wi.ide.file",
+    "dependencies": {
+        "mime-types": "^2.1.13"
+    }
+}
