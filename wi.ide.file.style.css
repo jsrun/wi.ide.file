@@ -1,0 +1,32 @@
+/**
+ *  __          __  _    _____ _____  ______ 
+ *  \ \        / / | |  |_   _|  __ \|  ____|
+ *   \ \  /\  / /__| |__  | | | |  | | |__   
+ *    \ \/  \/ / _ \ '_ \ | | | |  | |  __|  
+ *     \  /\  /  __/ |_) || |_| |__| | |____ 
+ *      \/  \/ \___|_.__/_____|_____/|______|
+ *                                                                            
+ *  @author André Ferreira <andrehrf@gmail.com>
+ *  @license MIT
+ */
+
+.wi-file-preview-markdown{
+    position: absolute;
+    margin-left: 50%;
+    width: calc(50% - 20px);
+    height: 100%;
+    top: 0px;
+    right: 0px;
+    padding-left: 20px; 
+    overflow: auto;
+    background-color: #FFF;
+    color: #000;
+}
+
+.wi-file-preview-markdown pre{
+    overflow: auto;
+    max-width: calc(100% - 40px);
+    max-height: 300px;
+    padding: 10px;
+    background-color: #EFEFEF;
+}

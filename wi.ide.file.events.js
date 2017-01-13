@@ -15,6 +15,25 @@
 (function(){    
     webide.file = {
         /**
+         * 
+         */
+        modesByMime: {
+            "text/vnd.abc": "abc",
+            "application/x-actionscript": "actionscript", "text/x-actionscript": "actionscript",
+            "application/x-applescript": "applescript",
+            "text/x-asciidoc": "asciidoc",
+            "application/bat": "batchfile", "application/x-bat": "batchfile",
+            "text/x-c": "c_cpp",
+            "text/x-csharp": "csharp",
+            "application/x-pointplus": "css", "text/css": "css",
+            "application/dart": "dart",
+            "text/html": "html",
+            "text/x-markdown": "markdown",
+            "application/json": "json",
+            "application/javascript": "javascript"
+        },
+        
+        /**
          * Function to get file informations 
          * 
          * @params string filename
@@ -52,12 +71,17 @@
                
             if(!webide.tabs.hasByPath(fileStats.filename)){
                 webide.getContents("GET", "/data?filename=" + filename, null, function(data){
+                    console.log(fileStats.mime);
                     webide.file.createTabByMime(fileStats, data);
                 });
             }
             else{
                 webide.tabs.focusByPath(fileStats.filename);
             }
+        },
+        
+        setModeByMime: function(mime, mode){
+            this.modesByMime[mime] = mode;
         },
         
         /**
@@ -67,18 +91,54 @@
          * @param mixed data
          * @return void
          */
-        createTabByMime(fileStats, data){
+        createTabByMime: function(fileStats, data){   
+            var _this = this;
+            
             webide.tabs.add(fileStats.basename, fileStats.filename, "editor", null, function(id, editor){
-                var textarea = $(id + ' textarea[name="code"]').hide();
+                var textarea = $("#wi-ed-" + id + ' textarea[name="code"]').hide();
                 editor.getSession().setValue(data);
                 editor.getSession().on('change', function(){
                     textarea.val(editor.getSession().getValue());
                 });
-
-                switch(fileStats.mime){
-                    case "application/json": editor.session.setMode("ace/mode/json"); break;
-                    case "application/javascript": editor.session.setMode("ace/mode/javascript"); break;
-                    default: editor.session.setMode("ace/mode/text"); break;
+                     
+                try{ var mode = (typeof _this.modesByMime[fileStats.mime] == "string") ? _this.modesByMime[fileStats.mime] : "text"; }
+                catch(e){ var mode = "text"; }
+                
+                editor.session.setMode("ace/mode/" + mode);
+                                
+                switch(mode){
+                    case "markdown":
+                        console.log(id);
+                        //webide.tabs.addToolbar(id);
+                        $("#wi-ed-" + id).css("width", "50%");
+                        $("#wi-tc-" + id).append('<div class="wi-file-preview-markdown"></div>'+
+                                                 '<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/default.min.css">');
+                                       
+                        if($("#hljs").length <= 0){
+                            var hljsJs = document.createElement("script");
+                            hljsJs.id = "hljs";     
+                            hljsJs.src = "//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js";
+                            hljsJs.onload = function(){
+                                hljs.initHighlightingOnLoad();
+                                
+                                marked.setOptions({
+                                    highlight: function (code) {
+                                        return hljs.highlightAuto(code).value;
+                                    }
+                                });
+                                
+                                $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(data));
+                            };
+                            
+                            document.body.appendChild(hljsJs);
+                        }                        
+                        
+                        $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(data));
+                        
+                        editor.getSession().on('change', function(){
+                            $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(editor.getSession().getValue()));
+                        });
+                    break;
                 }
             });
         }

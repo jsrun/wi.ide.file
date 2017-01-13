@@ -17,7 +17,9 @@ let glob = require("glob"),
     path = require('path'),
     multipart = require('connect-multiparty'); 
 
-module.exports = (_this) => {         
+module.exports = (_this) => {  
+    _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
+    
     //New Project
     _this.commands.addCommand({
         name: "newproject",
