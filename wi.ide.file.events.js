@@ -30,7 +30,8 @@
             "text/html": "html",
             "text/x-markdown": "markdown",
             "application/json": "json",
-            "application/javascript": "javascript"
+            "application/javascript": "javascript",
+            "application/xml": "xml"
         },
         
         /**
@@ -111,8 +112,8 @@
                         console.log(id);
                         //webide.tabs.addToolbar(id);
                         $("#wi-ed-" + id).css("width", "50%");
-                        $("#wi-tc-" + id).append('<div class="wi-file-preview-markdown"></div>'+
-                                                 '<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/default.min.css">');
+                        $("#wi-ed-" + id).parent().append('<div class="wi-file-preview-markdown"></div>'+
+                                                          '<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/default.min.css">');
                                        
                         if($("#hljs").length <= 0){
                             var hljsJs = document.createElement("script");
@@ -127,16 +128,16 @@
                                     }
                                 });
                                 
-                                $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(data));
+                                $(".wi-file-preview-markdown", $("#wi-ed-" + id).parent()).html(marked(data));
                             };
                             
                             document.body.appendChild(hljsJs);
                         }                        
                         
-                        $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(data));
+                        $(".wi-file-preview-markdown", $("#wi-ed-" + id).parent()).html(marked(data));
                         
                         editor.getSession().on('change', function(){
-                            $(".wi-file-preview-markdown", "#wi-tc-" + id).html(marked(editor.getSession().getValue()));
+                            $(".wi-file-preview-markdown", $("#wi-ed-" + id).parent()).html(marked(editor.getSession().getValue()));
                         });
                     break;
                 }

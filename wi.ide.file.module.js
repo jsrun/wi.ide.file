@@ -87,23 +87,22 @@ module.exports = (_this) => {
         display: "Workspace",
         panel: fs.readFileSync(__dirname + "/wi.ide.workspace.ejs")
     });
-    
-    _this.panelsbar.addItem("navigate", {
-        position: "left",
-        display: "Navigate",
-        panel: fs.readFileSync(__dirname + "/wi.ide.navigate.ejs")
-    });
-    
+        
     //Workspace
     _this.app.get("/workspace", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
 
-        if(req.query.key)
+        if(req.query.key){
             var dirname = fs.realpathSync(decodeURI(req.query.key));
-        else    
-            var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
+        }
+        else{
+            if(req.user)
+                var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
+            else
+                var dirname = fs.realpathSync(__dirname + "/../../");
+        }
         
-        glob(dirname + "/*", {stat: true, cache: true, nodir: true}, function (er, files) {
+        glob(dirname + "/*", {stat: true, cache: true, nodir: true, dot: true}, function (er, files) {
             let source = [];
 
             for(let keyDiretory in files){
@@ -135,7 +134,19 @@ module.exports = (_this) => {
     });
     
     _this.app.get("/data", (req, res) => {        
-        let filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
-        res.sendFile(filename);
+        let mime = require('mime-types'),      
+            filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
+            
+        var mimeFile = mime.lookup(filename);
+            
+        if(!mimeFile)
+            mimeFile = "text/plain";        
+        
+        res.sendFile(filename, {
+            dotfiles: "allow",
+            headers: {
+                "Content-Type": mimeFile
+            }
+        });
     });
 };
