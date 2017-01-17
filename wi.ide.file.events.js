@@ -31,7 +31,8 @@
             "text/x-markdown": "markdown",
             "application/json": "json",
             "application/javascript": "javascript",
-            "application/xml": "xml"
+            "application/xml": "xml",
+            "text/yaml": "yaml"
         },
         
         /**

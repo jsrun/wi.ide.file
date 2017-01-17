@@ -96,10 +96,10 @@ module.exports = (_this) => {
             var dirname = fs.realpathSync(decodeURI(req.query.key));
         }
         else{
-            if(req.user)
+            //if(req.user)
                 var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
-            else
-                var dirname = fs.realpathSync(__dirname + "/../../");
+            //else
+            //    var dirname = fs.realpathSync(__dirname + "/../../");
         }
         
         glob(dirname + "/*", {stat: true, cache: true, nodir: true, dot: true}, function (er, files) {
