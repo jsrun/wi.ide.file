@@ -22,14 +22,15 @@ module.exports = (_this) => {
     
     //New Project
     _this.commands.addCommand({
-        name: "newproject",
+        name: "webide:newproject",
         bind: {mac: "Command-N", win: "Ctrl-Shift-N"},
     });
     
     _this.navbar.addItem("File/New Project...", {
-        command: "newproject",
-        event: "webide.window('/window/newproject')"
+        command: "webide:newproject"
     }, 100);
+    
+    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/wi.window.newproject.ejs", {projects: JSON.parse(fs.readFileSync(__dirname + "/projects.json"))}); });
     
     //New File
     _this.commands.addCommand({

@@ -13,6 +13,10 @@
 "use strict";
 
 (function(){    
+    webide.commands.add("webide:newproject", function(){
+        webide.windowRemote('/window/newproject', {width: 1000, height: 550});
+    });
+    
     webide.file = {
         /**
          * 

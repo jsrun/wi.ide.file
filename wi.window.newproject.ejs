@@ -1,0 +1,19 @@
+<div class="wi-window-header">
+    <div class="wi-window-header-title"><%= __("New Project")%></div>
+</div>
+<div class="wi-window-main wi-window-workspaces">
+    <% for(var key in projects){ %>
+        <div class="wi-window-workspace-group">
+            <h3><%= key %></h3>
+            <hr/>
+        </div>
+        <div class="wi-window-workspace-box">
+        <% for(var key2 in projects[key]){ %>
+            <div class="wi-window-workspace-item">
+                <img src="/img/<%= projects[key][key2].icon %>" alt="<%= projects[key][key2].name %>" />
+                <div class="wi-window-workspace-item-desc"><%= projects[key][key2].name %></div>
+            </div>
+        <% } %>
+        </div>
+    <% } %>
+</div>
