@@ -1,7 +1,32 @@
 <div class="wi-window-header">
     <div class="wi-window-header-title"><%= __("New Project")%></div>
+    <div class="wi-window-header-close" title="<%= __("Close")%>"><i class="fa fa-times" aria-hidden="true"></i></div>
 </div>
 <div class="wi-window-main wi-window-workspaces">
+    <div class="wi-window-workspace-description">
+        <div class="wi-window-workspace-input">
+            <legend for="wi-workspace-namespace"><%= __("Workspace name")%></legend>
+            <input type="text" id="wi-workspace-namespace" placeholder="<%= __("your-project-name")%>" />
+        </div>
+        
+        <div class="wi-window-workspace-input">
+            <legend for="wi-workspace-description"><%= __("Description")%></legend>
+            <input type="text" id="wi-workspace-description" placeholder="<%= __("Make a short description of your workspace")%>" />
+        </div>
+             
+        <div class="wi-window-workspace-input">
+            <legend for="wi-workspace-git-clone"><%= __("Clone from Git or Mercurial URL")%></legend>
+            <input type="text" id="wi-workspace-git-clone" placeholder="<%= __("e.g. jsrun/webide or git@github.com:jsrun/webide.git")%>" />
+        </div>
+        
+        <div class="wi-window-workspace-input">
+            <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
+            <select id="wi-workspace-container-version">
+                <option value="latest">latest</option>
+            </select>
+        </div>
+    </div>
+    <div class="wi-window-workspace-groups">
     <% for(var key in projects){ %>
         <div class="wi-window-workspace-group">
             <h3><%= key %></h3>
@@ -16,4 +41,8 @@
         <% } %>
         </div>
     <% } %>
+    </div>
+</div>
+<div class="wi-window-footer">
+    
 </div>

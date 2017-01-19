@@ -15,7 +15,8 @@
 let glob = require("glob"),
     fs = require("fs"),
     path = require('path'),
-    multipart = require('connect-multiparty'); 
+    multipart = require('connect-multiparty'),
+    es = require("event-stream"); 
 
 module.exports = (_this) => {  
     _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
@@ -30,7 +31,7 @@ module.exports = (_this) => {
         command: "webide:newproject"
     }, 100);
     
-    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/wi.window.newproject.ejs", {projects: JSON.parse(fs.readFileSync(__dirname + "/projects.json"))}); });
+    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/wi.window.newproject.ejs", {projects: _this.run.getRunners()}); });
     
     //New File
     _this.commands.addCommand({
@@ -148,6 +149,27 @@ module.exports = (_this) => {
             headers: {
                 "Content-Type": mimeFile
             }
+        });
+    });
+    
+    _this.app.get("/stream", (req, res) => {        
+        let mime = require('mime-types'),      
+            lines = "",
+            filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20'))); 
+        
+        fs.stat(filename, function(err, stats){
+            res.status(200).set({
+                'Content-Type': mime.lookup(filename),
+                'Content-disposition': 'attachment;filename=' + filename,
+                'File-size': stats.size
+            });
+
+            fs.createReadStream(filename).pipe(es.split()).pipe(es.mapSync(function(line){ 
+                lines += line + "\n";
+            }).on('end', function () {  
+                lines = lines.substr(lines, lines.length-2);
+                res.send(new Buffer(lines, 'binary')); 
+            }));
         });
     });
 };

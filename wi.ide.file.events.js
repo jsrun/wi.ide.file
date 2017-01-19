@@ -14,12 +14,22 @@
 
 (function(){    
     webide.commands.add("webide:newproject", function(){
-        webide.windowRemote('/window/newproject', {width: 1000, height: 550});
+        webide.windowRemote('/window/newproject', {width: 1000, height: 550}, function(){
+            $(".wi-window-workspace-item:first").addClass("wi-window-workspace-item-active");
+            
+            $(".wi-window-workspace-item").click(function(){
+                $(".wi-window-workspace-item-active").removeClass("wi-window-workspace-item-active");
+                $(this).addClass("wi-window-workspace-item-active");
+                
+                $("#wi-workspace-container-version options").remove();
+            });
+        });
     });
     
     webide.file = {
         /**
-         * 
+         * List of modes by mimes
+         * @type object
          */
         modesByMime: {
             "text/vnd.abc": "abc",
@@ -49,7 +59,7 @@
             filename = encodeURIComponent(filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
             
             webide.getContentsJSON("GET", "/open?filename=" + filename, null, function(fileStats){
-                if(fileStats.stat.size >= 16777216)//2Mb
+                if(fileStats.stat.size >= 2097152)//2Mb
                     webide.file.stream(fileStats)
                 else
                     webide.file.get(fileStats);
@@ -59,11 +69,79 @@
         /**
          * Function to open big files
          * 
+         * @see https://github.com/jsrun/express-send-stream
          * @param object fileStats
          * @return void
          */
         stream: function(fileStats){
+            if(confirm("Do you really want to open this file ?, the file is larger than recommended, can cause system slowdown")){
+                var filename = encodeURIComponent(fileStats.filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
+
+                if(!webide.tabs.hasByPath(filename)){
+                    webide.tabs.add(fileStats.basename, fileStats.filename, "stream", null, function(id){
+                        var xhr = new XMLHttpRequest();
+                        xhr.overrideMimeType("application/octet-stream");
+                        xhr.responseType = "arraybuffer";
+                        
+                        $("#wi-stream-" + id).append("<div class='wi-stream-progress-shadow'></div><div class='wi-stream-progress'><div class='wi-stream-progress-bar'></div></div>");
+
+                        xhr.onprogress = function(progress){
+                            $("#wi-stream-" + id + " .wi-stream-progress-bar").css("width", ((progress.loaded*100)/parseInt(xhr.getResponseHeader("File-size"))) + "%");
+                        };
+
+                        xhr.onload = function(v){
+                            var byteArray = new Uint8Array(xhr.response);
+                            renderStream(1, byteArray.byteLength, byteArray, 524288, "#code");
+                        };
+
+                        xhr.onerror = function (e) {
+                            console.log(e);
+                        };
+
+                        xhr.open("GET", "/stream?filename=" + filename, true);
+                        xhr.send();
+
+                        function renderStream(byteStart, byteLength, byteArray, byteBlock, elem){
+                            var blockString = "";
+
+                            if(byteStart+byteBlock > byteLength)
+                                byteBlock = (byteLength - byteStart)-1;
+
+                            for(var i = byteStart; i <= (byteStart+byteBlock); i++)
+                                blockString += String.fromCharCode(byteArray[i]);
+
+                            document.querySelector("#wi-ed-" + id).appendChild(document.createTextNode(blockString));
+                            $("#wi-stream-" + id + " .wi-stream-progress-bar").css("width", ((byteStart+byteBlock)*100)/(byteLength-1) + "%");
+                            //console.log(byteStart,(byteStart+byteBlock),byteLength,(((byteStart+byteBlock)*100)/(byteLength-1) + "%"));
+
+                            if(byteStart+byteBlock < byteLength-1){
+                                setTimeout(renderStream, 200, (byteStart+byteBlock)+1, byteLength, byteArray, byteBlock, elem); 
+                            }
+                            else{
+                                setTimeout(function(){
+                                    var settings = webide.settings.getByPattern(/^ace\.editor\..*?$/i);
+                                    var theme = webide.settings.get("ace.editor.theme");                        
+                                    theme = (!theme) ? "ace/theme/twilight" : "ace/theme/" + theme;
+
+                                    var editor = ace.edit("wi-ed-" + id);
+                                    editor.setTheme(theme);
+                                    editor.setOptions({enableBasicAutocompletion: true, enableSnippets: true, enableLiveAutocompletion: false});
+                                    
+                                    setTimeout(function(){ $("#wi-stream-" + id).remove(); }, 10000);
+                                   
+                                    webide.tabs.itens[id].editor = editor;
+                                    editor.resize(true);
+                                }, 100);
+                            }
+                        }
+                    });
+                }
+                else{
+                    webide.tabs.focusByPath(filename);
+                }
             
+                
+            }
         },
         
         /**
@@ -73,19 +151,25 @@
          * @return void 
          */
         get: function(fileStats){
-            filename = encodeURIComponent(fileStats.filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
+            var filename = encodeURIComponent(fileStats.filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
                
-            if(!webide.tabs.hasByPath(fileStats.filename)){
+            if(!webide.tabs.hasByPath(filename)){
                 webide.getContents("GET", "/data?filename=" + filename, null, function(data){
-                    console.log(fileStats.mime);
                     webide.file.createTabByMime(fileStats, data);
                 });
             }
             else{
-                webide.tabs.focusByPath(fileStats.filename);
+                webide.tabs.focusByPath(filename);
             }
         },
         
+        /**
+         * Function to set mode by mime
+         * 
+         * @param string mime
+         * @param string mode
+         * @return void
+         */
         setModeByMime: function(mime, mode){
             this.modesByMime[mime] = mode;
         },
@@ -114,7 +198,6 @@
                                 
                 switch(mode){
                     case "markdown":
-                        console.log(id);
                         //webide.tabs.addToolbar(id);
                         $("#wi-ed-" + id).css("width", "50%");
                         $("#wi-ed-" + id).parent().append('<div class="wi-file-preview-markdown"></div>'+
