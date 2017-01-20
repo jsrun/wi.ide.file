@@ -42,3 +42,4 @@ jspm_packages
 !/*.json
 !/*.css
 !/*.ejs
+!/*.md
