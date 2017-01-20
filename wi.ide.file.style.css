@@ -49,7 +49,7 @@
     font-size: 12px;
 }
 
-.wi-window-workspace-description input[type=text], .wi-window-workspace-description select{
+.wi-window-workspace-description input[type=text], .wi-window-workspace-description input[type=url], .wi-window-workspace-description select{
     width: 100%;
     padding: 5px;
     border: 1px solid #e6e6e6;

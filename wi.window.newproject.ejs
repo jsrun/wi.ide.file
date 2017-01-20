@@ -3,54 +3,56 @@
     <div class="wi-window-header-close" title="<%= __("Close")%>"><i class="fa fa-times" aria-hidden="true"></i></div>
 </div>
 <div class="wi-window-main wi-window-workspaces">
-    <div class="wi-window-workspace-description">
-        <div class="wi-window-workspace-input">
-            <legend for="wi-workspace-namespace"><%= __("Workspace name")%></legend>
-            <input type="text" id="wi-workspace-namespace" placeholder="<%= __("your-project-name")%>" />
+    <form action="/window/newproject" method="post" id="newproject-form">
+        <div class="wi-window-workspace-description">
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-namespace"><%= __("Workspace name")%></legend>
+                <input type="text" id="wi-workspace-namespace" name="name" required="required" validatetype="namespace" placeholder="<%= __("your-project-name")%>" />
+                <span class="wi-forms-error"><%= __("Please fill in the name field only with letters and without spaces")%></span>
+            </div>
+
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-description"><%= __("Description")%></legend>
+                <input type="text" id="wi-workspace-description" name="description" maxlength="140" placeholder="<%= __("Make a short description of your workspace")%>" />
+            </div>
+
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-git-clone"><%= __("Clone from Git or Mercurial URL")%></legend>
+                <input type="url" id="wi-workspace-git-clone" name="git.clone" placeholder="<%= __("e.g. jsrun/webide or git@github.com:jsrun/webide.git")%>" />
+                <span class="wi-forms-error"><%= __("Please enter a valid url")%></span>
+            </div>
+
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-container-image"><%= __("Container image")%></legend>
+                <input type="text" id="wi-workspace-container-image" name="container.image" disabled="disabled" />
+            </div>
+
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
+                <select id="wi-workspace-container-version" name="container.version"></select>
+            </div>
         </div>
-        
-        <div class="wi-window-workspace-input">
-            <legend for="wi-workspace-description"><%= __("Description")%></legend>
-            <input type="text" id="wi-workspace-description" placeholder="<%= __("Make a short description of your workspace")%>" />
-        </div>
-             
-        <div class="wi-window-workspace-input">
-            <legend for="wi-workspace-git-clone"><%= __("Clone from Git or Mercurial URL")%></legend>
-            <input type="text" id="wi-workspace-git-clone" placeholder="<%= __("e.g. jsrun/webide or git@github.com:jsrun/webide.git")%>" />
-        </div>
-        
-        <div class="wi-window-workspace-input">
-            <legend for="wi-workspace-container-image"><%= __("Container image")%></legend>
-            <input type="text" id="wi-workspace-container-image" disabled="disabled" />
-        </div>
-        
-        <div class="wi-window-workspace-input">
-            <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
-            <select id="wi-workspace-container-version">
-                <option value="latest">latest</option>
-            </select>
-        </div>
-    </div>
-    <div class="wi-window-workspace-groups">
-    <% for(var key in projects){ %>
-        <div class="wi-window-workspace-group">
-            <h3><%= key %></h3>
-            <hr/>
-        </div>
-        <div class="wi-window-workspace-box">
-        <% for(var key2 in projects[key]){ %>
-        <div class="wi-window-workspace-item" rel="<%= JSON.stringify(projects[key][key2]); %>">
+        <div class="wi-window-workspace-groups">
+        <% for(var key in projects){ %>
+            <div class="wi-window-workspace-group">
+                <h3><%= key %></h3>
+                <hr/>
+            </div>
+            <div class="wi-window-workspace-box">
+            <% for(var key2 in projects[key]){ %>
+            <div class="wi-window-workspace-item" rel="<%= JSON.stringify(projects[key][key2]); %>" title="<%= projects[key][key2].description %>">
                 <img src="/img/<%= projects[key][key2].icon %>" alt="<%= projects[key][key2].name %>" />
                 <div class="wi-window-workspace-item-desc"><%= projects[key][key2].name %></div>
             </div>
+            <% } %>
+            </div>
         <% } %>
         </div>
-    <% } %>
-    </div>
+    </form>
 </div>
 <div class="wi-window-footer">
     <div class="float-right">
-        <button class="wi-btn wi-btn-create"><%= __("Create")%></button>
-        <button class="wi-btn wi-btn-cancel"><%= __("Cancel")%></button>
+        <button class="wi-btn wi-btn-create" title="<%= __("Click to create the new workspace")%>"><%= __("Create")%></button>
+        <button class="wi-btn wi-btn-cancel" title="<%= __("Click to cancel action")%>"><%= __("Cancel")%></button>
     </div>
 </div>

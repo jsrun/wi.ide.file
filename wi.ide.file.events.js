@@ -29,15 +29,20 @@
                 $("#wi-workspace-container-image").val(item.image);
             });
             
-            $(".wi-window-workspace-item:first").click();
-            
+            $(".wi-window-workspace-item:first").click();            
             $(".wi-btn-create").click(function(){
-                
+                if(webide.forms.validate("#newproject-form")){
+                    webide.terminal.create("root", function(terminal){
+                        terminal.disable();
+                        terminal.find('.cursor').hide();
+                        terminal.find('.prompt').hide();     
+                        webide.sendJSON($("#newproject-form").attr("action"), webide.forms.data("#newproject-form"));
+                        $(".wi-window-modal").css("display", "none");
+                    });
+                }
             });
             
-            $(".wi-btn-cancel").click(function(){
-                
-            });
+            $(".wi-btn-cancel").click(function(){ $(".wi-window-modal").css("display", "none"); });
         });
     });
     
