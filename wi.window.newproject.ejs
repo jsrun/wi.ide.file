@@ -20,6 +20,11 @@
         </div>
         
         <div class="wi-window-workspace-input">
+            <legend for="wi-workspace-container-image"><%= __("Container image")%></legend>
+            <input type="text" id="wi-workspace-container-image" disabled="disabled" />
+        </div>
+        
+        <div class="wi-window-workspace-input">
             <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
             <select id="wi-workspace-container-version">
                 <option value="latest">latest</option>
@@ -34,7 +39,7 @@
         </div>
         <div class="wi-window-workspace-box">
         <% for(var key2 in projects[key]){ %>
-            <div class="wi-window-workspace-item">
+        <div class="wi-window-workspace-item" rel="<%= JSON.stringify(projects[key][key2]); %>">
                 <img src="/img/<%= projects[key][key2].icon %>" alt="<%= projects[key][key2].name %>" />
                 <div class="wi-window-workspace-item-desc"><%= projects[key][key2].name %></div>
             </div>
@@ -44,5 +49,8 @@
     </div>
 </div>
 <div class="wi-window-footer">
-    
+    <div class="float-right">
+        <button class="wi-btn wi-btn-create"><%= __("Create")%></button>
+        <button class="wi-btn wi-btn-cancel"><%= __("Cancel")%></button>
+    </div>
 </div>

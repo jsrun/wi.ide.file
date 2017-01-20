@@ -1,10 +1,10 @@
 /**
- *  __          __  _    _____ _____  ______ 
- *  \ \        / / | |  |_   _|  __ \|  ____|
- *   \ \  /\  / /__| |__  | | | |  | | |__   
- *    \ \/  \/ / _ \ '_ \ | | | |  | |  __|  
- *     \  /\  /  __/ |_) || |_| |__| | |____ 
- *      \/  \/ \___|_.__/_____|_____/|______|
+ *  __          __  _    _____ _____  ______   ______ _ _      
+ *  \ \        / / | |  |_   _|  __ \|  ____| |  ____(_) |     
+ *   \ \  /\  / /__| |__  | | | |  | | |__    | |__   _| | ___ 
+ *    \ \/  \/ / _ \ '_ \ | | | |  | |  __|   |  __| | | |/ _ \
+ *     \  /\  /  __/ |_) || |_| |__| | |____ _| |    | | |  __/
+ *      \/  \/ \___|_.__/_____|_____/|______(_)_|    |_|_|\___| 
  *                                                                            
  *  @author André Ferreira <andrehrf@gmail.com>
  *  @license MIT
@@ -14,14 +14,29 @@
 
 (function(){    
     webide.commands.add("webide:newproject", function(){
-        webide.windowRemote('/window/newproject', {width: 1000, height: 550}, function(){
-            $(".wi-window-workspace-item:first").addClass("wi-window-workspace-item-active");
-            
+        webide.windowRemote('/window/newproject', {width: 1000, height: 550}, function(){            
             $(".wi-window-workspace-item").click(function(){
                 $(".wi-window-workspace-item-active").removeClass("wi-window-workspace-item-active");
                 $(this).addClass("wi-window-workspace-item-active");
                 
-                $("#wi-workspace-container-version options").remove();
+                $("#wi-workspace-container-version option").remove();
+                var item = JSON.parse($(this).attr("rel"));
+                
+                item.versions.forEach(function(version, index){
+                    $("#wi-workspace-container-version").append("<option value='" + version + "'>" + version + "</option>");
+                });
+                
+                $("#wi-workspace-container-image").val(item.image);
+            });
+            
+            $(".wi-window-workspace-item:first").click();
+            
+            $(".wi-btn-create").click(function(){
+                
+            });
+            
+            $(".wi-btn-cancel").click(function(){
+                
             });
         });
     });
@@ -139,8 +154,6 @@
                 else{
                     webide.tabs.focusByPath(filename);
                 }
-            
-                
             }
         },
         
