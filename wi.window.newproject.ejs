@@ -31,6 +31,11 @@
                 <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
                 <select id="wi-workspace-container-version" name="container.version"></select>
             </div>
+            
+            <div class="wi-window-workspace-input">
+                <input id="wi-workspace-container-autobuild" name="container.autobuild" type="checkbox" checked="checked" />
+                <label for="wi-workspace-container-autobuild"><%= __("Auto build")%></label>
+            </div>
         </div>
         <div class="wi-window-workspace-groups">
         <% for(var key in projects){ %>

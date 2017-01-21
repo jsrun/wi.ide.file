@@ -32,18 +32,26 @@
             $(".wi-window-workspace-item:first").click();            
             $(".wi-btn-create").click(function(){
                 if(webide.forms.validate("#newproject-form")){
-                    webide.terminal.create("root", function(terminal){
+                    webide.terminal.create("root", function(terminal, id){
+                        var data = webide.forms.data("#newproject-form");
+                        data["terminal"] = id;
+                        
                         terminal.disable();
                         terminal.find('.cursor').hide();
                         terminal.find('.prompt').hide();     
-                        webide.sendJSON($("#newproject-form").attr("action"), webide.forms.data("#newproject-form"));
-                        $(".wi-window-modal").css("display", "none");
+                        
+                        webide.sendJSON($("#newproject-form").attr("action"), data);//Request create new project
+                        $(".wi-window-modal").css("display", "none");//Hide modal
                     });
                 }
             });
             
             $(".wi-btn-cancel").click(function(){ $(".wi-window-modal").css("display", "none"); });
         });
+    });
+    
+    webide.io.on('workspace:refresh', function (data) {
+        webide.treeview.create(".wi-treeview");
     });
     
     webide.file = {
@@ -246,8 +254,30 @@
                             $(".wi-file-preview-markdown", $("#wi-ed-" + id).parent()).html(marked(editor.getSession().getValue()));
                         });
                     break;
+                    case "yaml":
+                        if(fileStats.basename == "docker-compose.yml"){
+                            $("#wi-ed-" + id).css("width", "50%");
+                            $("#wi-ed-" + id).parent().append('<div class="wi-file-docker-compose-editor"></div>');
+                            
+                            webide.getContents("GET", "/docker-compose-editor", null, function(contentsDockerComposerEditor){
+                                $(".wi-file-docker-compose-editor", $("#wi-ed-" + id).parent()).html(contentsDockerComposerEditor);
+                                
+                                if($("#jsyaml").length <= 0){
+                                    var jsYamlJS = document.createElement("script");
+                                    jsYamlJS.id = "jsyaml";     
+                                    jsYamlJS.src = "/js-yaml.min.js";
+                                    jsYamlJS.onload = function(){
+                                        console.log(jsyaml.safeLoad(data, jsyaml.JSON_SCHEMA));
+                                        //$(".wi-file-docker-compose-editor", $("#wi-ed-" + id).parent()).html(jsyaml.safeLoad(data, jsyaml.JSON_SCHEMA));
+                                    };
+
+                                    document.body.appendChild(jsYamlJS);
+                                }
+                            });
+                        }
+                    break;
                 }
             });
         }
-    }
+    };
 })();

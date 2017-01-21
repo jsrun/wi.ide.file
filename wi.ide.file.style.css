@@ -10,7 +10,7 @@
  *  @license MIT
  */
 
-.wi-file-preview-markdown{
+.wi-file-preview-markdown, .wi-file-docker-compose-editor{
     position: absolute;
     margin-left: 50%;
     width: calc(50% - 20px);
@@ -44,7 +44,7 @@
     border-right: 1px solid #CCC;
 }
 
-.wi-window-workspace-description legend{
+.wi-window-workspace-description legend, .wi-window-workspace-description label{
     color: #333;
     font-size: 12px;
 }
@@ -124,4 +124,12 @@
 
 .wi-window-workspace-item-desc{
     margin-top: 10px;
+}
+
+.wi-treeview-container-up .fancytree-custom-icon{
+    color: #00ff1d;
+}
+
+.wi-treeview-container-down .fancytree-custom-icon{
+    color: #FF0000;
 }

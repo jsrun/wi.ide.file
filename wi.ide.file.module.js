@@ -20,7 +20,9 @@ let glob = require("glob"),
     mkdirp = require("mkdirp"),
     async = require("async"),
     exec = require('child_process').exec,
-    yaml = require('js-yaml'); 
+    yaml = require('js-yaml'),
+    DockerCompose = require("docker-compose-remote-api"),
+    mime = require('mime-types'); 
 
 module.exports = (_this) => {  
     _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
@@ -42,15 +44,15 @@ module.exports = (_this) => {
         let workspaceDirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
         
         if(socket){
-            socket.emit("stdout", "Starting workspace creation...");
+            socket.emit("stdout", {out: "Starting workspace creation...", _id: req.body.terminal});
                
             async.series([function(n){//Clone github
                 if(req.body.git.clone){
-                    socket.emit("stdout", "git clone " + req.body.git.clone);
+                    socket.emit("stdout", {out: "git clone " + req.body.git.clone, _id: req.body.terminal});
                     
                     var execGitClone = exec("git clone " + req.body.git.clone + " " + (workspaceDirname + "/" + req.body.name), { cwd: workspaceDirname });
-                    execGitClone.stdout.on('data', (data) => { socket.emit("stdout", data.toString()); });
-                    execGitClone.stderr.on('data', (data) => { socket.emit("stderr", data.toString()); });
+                    execGitClone.stdout.on('data', (data) => {  socket.emit("stdout", {out: data.toString(), _id: req.body.terminal}); });
+                    execGitClone.stderr.on('data', (data) => {  socket.emit("stderr", {out: data.toString(), _id: req.body.terminal}); });
                     execGitClone.on('exit', () => {
                         n();
                     });
@@ -60,24 +62,24 @@ module.exports = (_this) => {
                 }
             }, function(n){//Make dir!
                 if(!req.body.git.clone){
-                    socket.emit("stdout", "Creating directory...");
+                    socket.emit("stdout", {out: "Creating directory...", _id: req.body.terminal});
 
                     fs.stat(workspaceDirname + "/" + req.body.name, function(err, stats){
                         if(stats){
                             if(stats.isDirectory()){
-                                socket.emit("stderr", _this.i18n.__("Error trying to create workspace, there is already a directory with the same name"));
+                                socket.emit("stderr", {out: _this.i18n.__("Error trying to create workspace, there is already a directory with the same name"), _id: req.body.terminal});
                                 res.send("error");
                             }
                             else{
                                 mkdirp(workspaceDirname + "/" + req.body.name, function (err) { 
-                                    socket.emit("stdout", "Directory created successfully!");
+                                    socket.emit("stdout", {out: _this.i18n.__("Directory created successfully!"), _id: req.body.terminal});
                                     n();
                                 });
                             }
                         }
                         else{
                             mkdirp(workspaceDirname + "/" + req.body.name, function (err) { 
-                                socket.emit("stdout", "Directory created successfully!");
+                                socket.emit("stdout", {out: _this.i18n.__("Directory created successfully!"), _id: req.body.terminal});
                                 n();
                             });
                         }
@@ -87,7 +89,7 @@ module.exports = (_this) => {
                     n();
                 }
             }, function(n){//Make Dockerfile
-                socket.emit("stdout", "Preparing the Dockerfile...");
+                socket.emit("stdout", {out: _this.i18n.__("Preparing the Dockerfile..."), _id: req.body.terminal});
                 let runner = _this.run.getRunner(req.body.container.image);
                 
                 if(runner){
@@ -96,26 +98,27 @@ module.exports = (_this) => {
                     fs.writeFileSync(workspaceDirname + "/" + req.body.name + "/Dockerfile", Dockerfile);
                     
                     
-                    var dockerComposer = {version: "2", services: {}};
+                    var dockerComposer = {version: "3", services: {}};
                     dockerComposer.services[req.body.name] = runner.script;
                     fs.writeFileSync(workspaceDirname + "/" + req.body.name + "/docker-compose.yml", yaml.safeDump(dockerComposer));
                     
                     //Build docker
                     var execDockerCompose = exec("docker-compose up -d --build --force-recreate", { cwd: workspaceDirname + "/" + req.body.name });
-                    execDockerCompose.stdout.on('data', (data) => { socket.emit("stdout", data.toString()); });
-                    execDockerCompose.stderr.on('data', (data) => { socket.emit("stderr", data.toString()); });
+                    execDockerCompose.stdout.on('data', (data) => { socket.emit("stdout", {out: data.toString(), _id: req.body.terminal}); });
+                    execDockerCompose.stderr.on('data', (data) => { socket.emit("stderr", {out: data.toString(), _id: req.body.terminal}); });
                     execDockerCompose.on('exit', () => {
                         n();
                     });
                 }
                 else{
-                    socket.emit("stderr", _this.i18n.__("Could not find the selected container image"));
+                    socket.emit("stderr", {out: _this.i18n.__("Could not find the selected container image"), _id: req.body.terminal});
                     res.send("error");
                 }
             }], function(){//Finish
-                socket.emit("stdout", _this.i18n.__("Workspace created successfully!"));
-                socket.emit("cwd", "/" + req.body.name);
-                socket.emit("enable");
+                socket.emit("stdout", {out: _this.i18n.__("Workspace created successfully!"), _id: req.body.terminal});
+                socket.emit("cwd", {cwd: "/" + req.body.name, _id: req.body.terminal});
+                socket.emit("workspace:refresh");
+                socket.emit("enable", {_id: req.body.terminal});
                 res.send("ok");
             });
         }        
@@ -181,31 +184,36 @@ module.exports = (_this) => {
     //Workspace
     _this.app.get("/workspace", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
-
-        if(req.query.key){
-            var dirname = fs.realpathSync(decodeURI(req.query.key));
-        }
-        else{
-            //if(req.user)
-                var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
-            //else
-            //    var dirname = fs.realpathSync(__dirname + "/../../");
-        }
-        
-        glob(dirname + "/*", {stat: true, cache: false, dot: true}, function (er, files) {
+        var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
+        var dirnameSub = (req.query.key) ? decodeURI(req.query.key) : "";
+ 
+        glob(dirname + dirnameSub + "/*", {stat: false, cache: false, dot: true}, function (er, files) {
             let source = [];
+            var progress = [];
 
             for(let keyDiretory in files){
                 let stats = fs.statSync(files[keyDiretory]);
                 try{ var statsDockerfile = fs.statSync(files[keyDiretory] + "/Dockerfile"); } catch(e) { var statsDockerfile = null; }
                 try{ var statsGit = fs.statSync(files[keyDiretory] + "/.git"); } catch(e) { var statsGit = null; }
 
-                if(statsDockerfile)
-                    source.push({title: path.basename(files[keyDiretory]), key: files[keyDiretory], type: "container", icon: "fa fa-ship", folder: true, lazy: true});
-                else if(statsGit)
-                    source.push({title: path.basename(files[keyDiretory]), key: files[keyDiretory], type: "git", icon: "fa fa-git", folder: true, lazy: true});
-                else if(stats.isDirectory())
-                    source.push({title: path.basename(files[keyDiretory]), key: files[keyDiretory], type: "folder", folder: true, lazy: true});
+                if(statsDockerfile){
+                    progress.push(1);
+                    var docker = DockerCompose({cwd: files[keyDiretory]});
+
+                    docker.ps(function(listcontainers){
+                        try{ var state = listcontainers[0].state } catch(e) { var state = null; }
+                        var serviceName = path.basename(files[keyDiretory]);
+                        
+                        source.push({title: path.basename(files[keyDiretory]), serviceName: serviceName, key: files[keyDiretory].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), type: "container", icon: "fa fa-circle", extraClasses: ((state == "Up") ? "wi-treeview-container-up" : "wi-treeview-container-down"), folder: true, lazy: true});
+                        progress.pop();
+                    });
+                }
+                else if(statsGit){
+                    source.push({title: path.basename(files[keyDiretory]), key: files[keyDiretory].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), type: "git", icon: "fa fa-git", folder: true, lazy: true});
+                }
+                else if(stats.isDirectory()){
+                    source.push({title: path.basename(files[keyDiretory]), key: files[keyDiretory].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), type: "folder", folder: true, lazy: true});
+                }
             }
 
             for(let keyFile in files){
@@ -213,27 +221,34 @@ module.exports = (_this) => {
                 
                 if(stats.isFile()){
                     let mime = require('mime-types')
-                    source.push({title: path.basename(files[keyFile]), type: "file", mime: mime.lookup(files[keyFile]), key: files[keyFile], folder: false});
+                    source.push({title: path.basename(files[keyFile]), type: "file", mime: mime.lookup(files[keyFile]), key: files[keyFile].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), folder: false});
                 }
             }
 
-            res.set({"Cache-Control": "public, max-age=0", "Expires": new Date(Date.now() - 300000).toUTCString()}).send(source);
+            var persistent = setInterval(function(){
+                if(progress.length <= 0){
+                    clearInterval(persistent);
+                    res.set({"Cache-Control": "public, max-age=0", "Expires": new Date(Date.now() - 300000).toUTCString()}).send(source);
+                }
+            }, 300);            
         });
     });
     
     _this.app.get("/open", (req, res) => { 
-        let mime = require('mime-types');        
-        let filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
+        let _id = (req.user) ? req.user._id : 0,
+            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
+            filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
         
         fs.stat(filename, function(err, stat){
             if(err) res.status(500).send(err);
-            else res.send({filename: filename, basename: path.basename(filename), mime: mime.lookup(filename), stat: stat});
+            else res.send({filename: filename.replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), basename: path.basename(filename), mime: mime.lookup(filename), stat: stat});
         });
     });
     
     _this.app.get("/data", (req, res) => {        
-        let mime = require('mime-types'),      
-            filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
+        let _id = (req.user) ? req.user._id : 0,
+            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
+            filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
             
         var mimeFile = mime.lookup(filename);
             
@@ -249,9 +264,10 @@ module.exports = (_this) => {
     });
     
     _this.app.get("/stream", (req, res) => {        
-        let mime = require('mime-types'),      
-            lines = "",
-            filename = fs.realpathSync(decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20'))); 
+        let lines = "",
+            _id = (req.user) ? req.user._id : 0,
+            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),       
+            filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20'))); 
         
         fs.stat(filename, function(err, stats){
             res.status(200).set({
@@ -268,4 +284,7 @@ module.exports = (_this) => {
             }));
         });
     });
+    
+    _this.app.get("/js-yaml.min.js", (req, res) => { res.send(fs.readFileSync(__dirname + "/node_modules/js-yaml/dist/js-yaml.min.js").toString()); });
+    _this.app.get("/js-yaml.min.js", (req, res) => { res.render(__dirname + "/wi.window.dockercompose.editor.ejs"); });
 };
