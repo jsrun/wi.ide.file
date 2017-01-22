@@ -37,7 +37,7 @@ module.exports = (_this) => {
         command: "webide:newproject"
     }, 100);
     
-    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/wi.window.newproject.ejs", {projects: _this.run.getRunners()}); });
+    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/newproject.ejs", {projects: _this.run.getRunners()}); });
     _this.app.post("/window/newproject", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
         let socket = _this._.getSocket(req.body.socket);
@@ -175,10 +175,10 @@ module.exports = (_this) => {
     }, 700);
     
     //Panels
-    _this.panelsbar.addItem("workspace", {
+    _this.sidebar.addItem("workspace", {
         position: "left",
         display: "Workspace",
-        panel: fs.readFileSync(__dirname + "/wi.ide.workspace.ejs")
+        panel: fs.readFileSync(__dirname + "/workspace.ejs")
     });
         
     //Workspace
@@ -286,5 +286,5 @@ module.exports = (_this) => {
     });
     
     _this.app.get("/js-yaml.min.js", (req, res) => { res.send(fs.readFileSync(__dirname + "/node_modules/js-yaml/dist/js-yaml.min.js").toString()); });
-    _this.app.get("/js-yaml.min.js", (req, res) => { res.render(__dirname + "/wi.window.dockercompose.editor.ejs"); });
+    _this.app.get("/docker-compose-editor", (req, res) => { res.render(__dirname + "/dockercompose.editor.ejs"); });
 };
