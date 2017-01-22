@@ -1,5 +1,5 @@
 {
-    "name": "wi-ide-file",
+    "name": "wi.ide.file",
     "version": "0.2.1",
     "description": "WebIDE files management module",
     "author": "André Ferreira <andrehrf@gmail.com>",
