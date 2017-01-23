@@ -12,8 +12,53 @@
 
 "use strict";
 
-(function(){    
-    webide.commands.add("webide:newproject", function(){
+webide.module("file", function(tabs, commands){    
+    //Register editor type
+    tabs.layout.registerComponent('editor', function(container, state){
+        container.id = state.id;
+        container.getElement().html("<div id='wi-ed-" + state.id + "'></div>");     
+        webide.tabs.itens[state.id].container = container;
+                
+        setTimeout(function(){
+            var settings = webide.settings.getByPattern(/^ace\.editor\..*?$/i);
+            var theme = webide.settings.get("ace.editor.theme");                        
+            theme = (!theme) ? "ace/theme/twilight" : "ace/theme/" + theme;
+
+            var editor = ace.edit("wi-ed-" + state.id);
+            editor.setTheme(theme);
+            editor.setOptions({enableBasicAutocompletion: true, enableSnippets: true, enableLiveAutocompletion: false});
+
+            for(var key in state.settings){
+                if(key !== "ace.editor.theme"){
+                    if(state.settings[key] == "true") state.settings[key] = true;//Bugfix
+                    if(state.settings[key] == "false") state.settings[key] = false;//Bugfix
+
+                    if(!isNaN(parseInt(state.settings[key])))
+                        state.settings[key] = parseInt(state.settings[key]);
+
+                    editor.setOption(key.replace(/ace\.editor\./img, ""), state.settings[key]);
+                }
+            }
+
+            webide.tabs.itens[state.id].editor = editor;
+            editor.resize();
+
+            if(typeof webide.tabs.itens[state.id].cb == "function")
+                setTimeout(function(state, editor){ webide.tabs.itens[state.id].cb(state.id, editor); }, 300, state, editor);
+        }, 100);
+    });
+    
+    //Register stream type
+    tabs.layout.registerComponent('stream', function(container, state){
+        container.id = state.id;
+        container.getElement().html("<div id='wi-ed-" + state.id + "'></div><div id='wi-stream-" + state.id + "'></div>");
+        webide.tabs.itens[state.id].container = container;
+        
+        if(typeof webide.tabs.itens[state.id].cb == "function")
+            setTimeout(function(state){ webide.tabs.itens[state.id].cb(state.id); }, 300, state);
+    });
+    
+    commands.add("webide:newproject", function(){
         webide.windowRemote('/window/newproject', {width: 1000, height: 550}, function(){            
             $(".wi-window-workspace-item").click(function(){
                 $(".wi-window-workspace-item-active").removeClass("wi-window-workspace-item-active");
@@ -50,11 +95,11 @@
         });
     });
     
-    webide.io.on('workspace:refresh', function (data) {
+    this.io.on('workspace:refresh', function (data) {
         webide.treeview.create(".wi-treeview");
     });
     
-    webide.file = {
+    this.file = {
         /**
          * List of modes by mimes
          * @type object
@@ -211,10 +256,58 @@
             var _this = this;
             
             webide.tabs.add(fileStats.basename, fileStats.filename, "editor", null, function(id, editor){
-                var textarea = $("#wi-ed-" + id + ' textarea[name="code"]').hide();
+                var textarea = $("#wi-ed-" + id + ' textarea');
+                
                 editor.getSession().setValue(data);
                 editor.getSession().on('change', function(){
-                    textarea.val(editor.getSession().getValue());
+                    var dmp = new diff_match_patch();
+                    var diff = dmp.diff_main(editor.getSession().getValue(), data, true);
+                    dmp.diff_cleanupSemantic(diff);
+                    
+                    var lines  = editor.getSession().doc.getAllLines().length;
+                    var offset = 0;
+                    
+                    $("#wi-ed-" + id + ' .ace_gutter .ace_gutter-cell').css("border-left", "");
+                                       
+                    var Range = ace.require('ace/range').Range;
+                    editor.getSession().addMarker(new Range(0,0,10,10), "line", 'fullLine');
+                                        
+                    /**
+                     * @see https://github.com/benkeen/ace-diff/blob/master/dist/ace-diff.js
+                     * @see http://stackoverflow.com/questions/25083183/how-can-i-get-and-patch-diffs-in-ace-editor
+                     * @see http://stackoverflow.com/questions/10452869/when-i-try-to-create-a-range-object-in-ace-js-an-illegal-constructor-error-is
+                     */
+                    var offset = 0;
+                    diff.forEach(function(chunk) {
+                        var op = chunk[0];
+                        var text = chunk[1];
+                        
+                        switch(op){
+                            case 0: offset += text.length; break;
+                            case -1: 
+                                /*editor.getSession().addMarker(Range.fromPoints(
+                                    editor.getSession().doc.indexToPosition(offset),
+                                    editor.getSession().doc.indexToPosition(offset + text.length)
+                                ), "ace_active-line", "fullLine");*/
+
+                                for(var key = editor.getSession().doc.indexToPosition(offset).row; key < editor.getSession().doc.indexToPosition(offset + text.length).row; key++)
+                                    $("#wi-ed-" + id + ' .ace_gutter .ace_gutter-cell').eq(key).css("border-left", "3px solid #53ef53");
+
+                                offset += text.length;
+                            break;
+                            case 1: 
+                                 /*editor.getSession().addMarker(Range.fromPoints(
+                                    editor.getSession().doc.indexToPosition(offset),
+                                    editor.getSession().doc.indexToPosition(offset + text.length)
+                                ), "ace_active-line", "fullLine");*/
+
+                                for(var key = editor.getSession().doc.indexToPosition(offset).row; key <= editor.getSession().doc.indexToPosition(offset + text.length).row; key++)
+                                    $("#wi-ed-" + id + ' .ace_gutter .ace_gutter-cell').eq(key).css("border-left", "3px solid #8484ff");
+
+                                offset += text.length;
+                            break;
+                        }
+                    });       
                 });
                      
                 try{ var mode = (typeof _this.modesByMime[fileStats.mime] == "string") ? _this.modesByMime[fileStats.mime] : "text"; }
@@ -280,4 +373,4 @@
             });
         }
     };
-})();
+});
