@@ -1,6 +1,6 @@
 {
     "name": "wi.ide.file",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "WebIDE files management module",
     "author": "André Ferreira <andrehrf@gmail.com>",
     "license": "MIT",
