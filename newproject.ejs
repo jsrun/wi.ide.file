@@ -23,19 +23,32 @@
             </div>
 
             <div class="wi-window-workspace-input">
-                <legend for="wi-workspace-container-image"><%= __("Container image")%></legend>
-                <input type="text" id="wi-workspace-container-image" name="container.image" disabled="disabled" />
-            </div>
-
-            <div class="wi-window-workspace-input">
                 <legend for="wi-workspace-container-version"><%= __("Container version")%></legend>
                 <select id="wi-workspace-container-version" name="container.version"></select>
+            </div>
+            
+            <div class="wi-window-workspace-input">
+                <legend for="wi-workspace-bind-port"><%= __("Port bind")%></legend>
+                
+                <div class="wi-window-workspace-bind-port">
+                    <div class="wi-window-workspace-bind-port-header">
+                        <div><%= __("Local port")%></div>
+                        <div><%= __("Port in container")%></div>
+                    </div>
+                    <div class="wi-window-workspace-bind-port-body">
+                        <table></table>   
+                    </div>
+                    <button class="wi-window-workspace-bind-port-btn-add"><i class="fa fa-plus" aria-hidden="true"></i> <%= __("Add port")%></button>
+                </div>
+                
             </div>
             
             <div class="wi-window-workspace-input">
                 <input id="wi-workspace-container-autobuild" name="container.autobuild" type="checkbox" checked="checked" />
                 <label for="wi-workspace-container-autobuild"><%= __("Auto build")%></label>
             </div>
+            
+            <input type="hidden" id="wi-workspace-container-image" name="container.image" disabled="disabled" />
         </div>
         <div class="wi-window-workspace-groups">
         <% for(var key in projects){ %>
@@ -45,7 +58,7 @@
             </div>
             <div class="wi-window-workspace-box">
             <% for(var key2 in projects[key]){ %>
-            <div class="wi-window-workspace-item" rel="<%= JSON.stringify(projects[key][key2]); %>" title="<%= projects[key][key2].description %>">
+            <div class="wi-window-workspace-item tooltip" rel="<%= JSON.stringify(projects[key][key2]); %>" title="<%= projects[key][key2].description %>">
                 <img src="/img/<%= projects[key][key2].icon %>" alt="<%= projects[key][key2].name %>" />
                 <div class="wi-window-workspace-item-desc"><%= projects[key][key2].name %></div>
             </div>

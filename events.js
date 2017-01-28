@@ -12,7 +12,7 @@
 
 "use strict";
 
-webide.module("file", function(tabs, commands){    
+webide.module("file", function(tabs, commands, treeview){    
     //Register editor type
     tabs.layout.registerComponent('editor', function(container, state){
         container.id = state.id;
@@ -77,29 +77,98 @@ webide.module("file", function(tabs, commands){
             $(".wi-window-workspace-item:first").click();            
             $(".wi-btn-create").click(function(){
                 if(webide.forms.validate("#newproject-form")){
-                    webide.terminal.create("root", function(terminal, id){
+                    webide.terminal.create(function(terminal, id, termID){
                         var data = webide.forms.data("#newproject-form");
-                        data["terminal"] = id;
+                        data["id"] = id;
+                        data["termID"] = termID;
+                        data["ports"] = [];
                         
-                        terminal.disable();
-                        terminal.find('.cursor').hide();
-                        terminal.find('.prompt').hide();     
-                        
+                        $(".wi-window-workspace-bind-port-body table tr").each(function(){
+                            var from = $(this).find("input").eq(0).val();
+                            var to = $(this).find("input").eq(1).val();
+                            
+                            if(from && to)
+                                var bind = from+":"+to;
+                            else if(to)
+                                var bind = to;
+                            else
+                                var bind = "";
+                            
+                            if(bind)
+                                data["ports"].push(bind);
+                        })
+                                                
                         webide.sendJSON($("#newproject-form").attr("action"), data);//Request create new project
                         $(".wi-window-modal").css("display", "none");//Hide modal
                     });
                 }
             });
             
+            $(".wi-window-workspace-bind-port-btn-add").click(function(){
+                $(".wi-window-workspace-bind-port-body table").append("<tr>"+
+                                                                      "    <td><input type=\"text\" placeholder=\"8080\" /></td>"+
+                                                                      "    <td><input type=\"text\" placeholder=\"80\" /></td>"+
+                                                                      "    <td><button class=\"wi-window-workspace-bind-port-btn-close\"><i class=\"fa fa-times\" aria-hidden=\"true\"></i></button></td>"+
+                                                                      "</tr>");
+                                                              
+                $(".wi-window-workspace-bind-port-btn-close").click(function(){
+                    $(this).parent().parent().remove(); 
+                });
+            });
+            
             $(".wi-btn-cancel").click(function(){ $(".wi-window-modal").css("display", "none"); });
+            $('.tooltip').tooltipster({theme: 'tooltipster-punk'});
         });
+    });
+    
+    commands.add("file:save", function(){
+        console.log(tabs.getActiveTab()); 
     });
     
     this.io.on('workspace:refresh', function (data) {
         webide.treeview.create(".wi-treeview");
     });
     
-    this.file = {
+    treeview.create("#workspace-treeview", {contextmenu: function(node, span, type){
+        switch(type){
+            case "container": 
+                $(span).contextMenu({menu: "containerContextMenu"}, function(action, el, pos) {
+                    console.log(node);
+                    switch(action){
+                        case "build": webide.terminal.exec(node.key, "docker-compose build --no-cache --force-rm", "workspace:refresh"); break;
+                        case "create": webide.terminal.exec(node.key, "docker-compose create --force-recreate --build ", "workspace:refresh"); break;
+                        case "start": webide.terminal.exec(node.key, "docker-compose start " + node.data.serviceName, "workspace:refresh"); break;
+                        case "restart": webide.terminal.exec(node.key, "docker-compose restart " + node.data.serviceName, "workspace:refresh"); break;
+                        case "pause": webide.terminal.exec(node.key, "docker-compose pause " + node.data.serviceName, "workspace:refresh"); break;
+                        case "unpause": webide.terminal.exec(node.key, "docker-compose unpause " + node.data.serviceName, "workspace:refresh"); break;
+                        case "stop": webide.terminal.exec(node.key, "docker-compose stop " + node.data.serviceName, "workspace:refresh"); break;
+                        case "up": webide.terminal.exec(node.key, "docker-compose up -d --remove-orphans", "workspace:refresh"); break;
+                        case "down": webide.terminal.exec(node.key, "docker-compose down --remove-orphans", "workspace:refresh"); break;
+                        case "settings": webide.file.open(node.key + "/docker-compose.yml");  break;
+                        case "exec": webide.terminal.exec(node.key); break;
+                    }
+                });
+            break;
+            case "folder": 
+                $(span).contextMenu({menu: "diretoryContextMenu"}, function(action, el, pos) {
+                    switch(action){
+                        case "open": break;
+                        case "download": webide.file.download(node.key); break;
+                    }
+                });
+            break;
+            case "file": 
+                $(span).contextMenu({menu: "fileContextMenu"}, function(action, el, pos) {
+                    switch(action){
+                        case "open": webide.file.open(node.key); break;
+                        case "download": webide.file.download(node.key); break;
+                    }
+                });
+            break;
+        }
+    }});      
+    
+    this.extends("file", {
         /**
          * List of modes by mimes
          * @type object
@@ -125,7 +194,7 @@ webide.module("file", function(tabs, commands){
         /**
          * Function to get file informations 
          * 
-         * @params string filename
+         * @param string filename
          * @return void
          */
         open: function(filename){
@@ -140,6 +209,22 @@ webide.module("file", function(tabs, commands){
         },
         
         /**
+         * Function to start download
+         * 
+         * @param string filename
+         * @return void
+         */
+        download: function(filename){
+            filename = encodeURIComponent(filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
+                        
+            var a = document.createElement('a');
+            a.href = "/download?filename=" + filename;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+        },
+        
+        /**
          * Function to open big files
          * 
          * @see https://github.com/jsrun/express-send-stream
@@ -150,8 +235,8 @@ webide.module("file", function(tabs, commands){
             if(confirm("Do you really want to open this file ?, the file is larger than recommended, can cause system slowdown")){
                 var filename = encodeURIComponent(fileStats.filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
 
-                if(!webide.tabs.hasByPath(filename)){
-                    webide.tabs.add(fileStats.basename, fileStats.filename, "stream", null, function(id){
+                if(!tabs.hasByPath(filename)){
+                    tabs.add(fileStats.basename, fileStats.filename, "stream", null, function(id){
                         var xhr = new XMLHttpRequest();
                         xhr.overrideMimeType("application/octet-stream");
                         xhr.responseType = "arraybuffer";
@@ -167,9 +252,7 @@ webide.module("file", function(tabs, commands){
                             renderStream(1, byteArray.byteLength, byteArray, 524288, "#code");
                         };
 
-                        xhr.onerror = function (e) {
-                            console.log(e);
-                        };
+                        xhr.onerror = function (e) { console.log(e); };
 
                         xhr.open("GET", "/stream?filename=" + filename, true);
                         xhr.send();
@@ -210,7 +293,7 @@ webide.module("file", function(tabs, commands){
                     });
                 }
                 else{
-                    webide.tabs.focusByPath(filename);
+                    tabs.focusByPath(filename);
                 }
             }
         },
@@ -224,14 +307,10 @@ webide.module("file", function(tabs, commands){
         get: function(fileStats){
             var filename = encodeURIComponent(fileStats.filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
                
-            if(!webide.tabs.hasByPath(filename)){
-                webide.getContents("GET", "/data?filename=" + filename, null, function(data){
-                    webide.file.createTabByMime(fileStats, data);
-                });
-            }
-            else{
-                webide.tabs.focusByPath(filename);
-            }
+            if(!tabs.hasByPath(filename))
+                this.getContents("GET", "/data?filename=" + filename, null, function(data){ webide.file.createTabByMime(fileStats, data); });
+            else
+                tabs.focusByPath(filename);
         },
         
         /**
@@ -255,7 +334,8 @@ webide.module("file", function(tabs, commands){
         createTabByMime: function(fileStats, data){   
             var _this = this;
             
-            webide.tabs.add(fileStats.basename, fileStats.filename, "editor", null, function(id, editor){
+            tabs.add(fileStats.basename, fileStats.filename, "editor", null, function(id, editor){
+                $('.lm_tab').tooltipster({theme: 'tooltipster-punk'});
                 var textarea = $("#wi-ed-" + id + ' textarea');
                 
                 editor.getSession().setValue(data);
@@ -285,29 +365,50 @@ webide.module("file", function(tabs, commands){
                         switch(op){
                             case 0: offset += text.length; break;
                             case -1: 
-                                /*editor.getSession().addMarker(Range.fromPoints(
-                                    editor.getSession().doc.indexToPosition(offset),
-                                    editor.getSession().doc.indexToPosition(offset + text.length)
-                                ), "ace_active-line", "fullLine");*/
-
                                 for(var key = editor.getSession().doc.indexToPosition(offset).row; key < editor.getSession().doc.indexToPosition(offset + text.length).row; key++)
                                     $("#wi-ed-" + id + ' .ace_gutter .ace_gutter-cell').eq(key).css("border-left", "3px solid #53ef53");
 
                                 offset += text.length;
                             break;
                             case 1: 
-                                 /*editor.getSession().addMarker(Range.fromPoints(
-                                    editor.getSession().doc.indexToPosition(offset),
-                                    editor.getSession().doc.indexToPosition(offset + text.length)
-                                ), "ace_active-line", "fullLine");*/
-
                                 for(var key = editor.getSession().doc.indexToPosition(offset).row; key <= editor.getSession().doc.indexToPosition(offset + text.length).row; key++)
                                     $("#wi-ed-" + id + ' .ace_gutter .ace_gutter-cell').eq(key).css("border-left", "3px solid #8484ff");
 
                                 offset += text.length;
                             break;
                         }
-                    });       
+                    });
+                    
+                    var title = tabs.getTitle(id).replace(/\*/img, "");         
+                    tabs.setTitle(id, (diff.length > 1) ? "* " + title : title);
+                });
+                
+                editor.commands.addCommand({
+                    name: 'editor:save',
+                    bindKey: {
+                        win: 'Ctrl-S',
+                        mac: 'Command-S',
+                        sender: 'editor|cli'
+                    },
+                    exec: function(env, args, request) {
+                        _this.save(fileStats.filename, fileStats.mime, editor.getSession().getValue(), function(){
+                            var title = tabs.getTitle(id).replace(/\*/img, "");         
+                            tabs.setTitle(id, title);
+                            data = editor.getSession().getValue();
+                        });
+                    }
+                });
+                
+                editor.commands.addCommand({
+                    name: 'editor:saveas',
+                    bindKey: {
+                        win: 'Ctrl-Shift-S',
+                        mac: 'Command-Shift-S',
+                        sender: 'editor|cli'
+                    },
+                    exec: function(env, args, request) {
+                        console.log(env);
+                    }
                 });
                      
                 try{ var mode = (typeof _this.modesByMime[fileStats.mime] == "string") ? _this.modesByMime[fileStats.mime] : "text"; }
@@ -371,6 +472,22 @@ webide.module("file", function(tabs, commands){
                     break;
                 }
             });
+        },
+        
+        /**
+         * Function to save file
+         * 
+         * @param string filename
+         * @param string mime
+         * @param string contents
+         * @param function fn
+         * @return void
+         */
+        save: function(filename, mime, content, fn){
+            var formData = new FormData();
+            var blob = new Blob([content], {type: mime, size: content.length});
+            formData.append('file', blob, filename);                   
+            $.ajax({url: '/save', data: formData, cache: false, contentType: false, processData: false, type: 'POST', success: fn});
         }
-    };
+    });
 });

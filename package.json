@@ -17,6 +17,8 @@
         "marked": "^0.3.6",
         "event-stream": "^3.3.2",
         "js-yaml": "^3.7.0",
-        "docker-compose-remote-api": "^0.1.2"
+        "docker-compose-remote-api": "^0.1.2",
+        "connect-multiparty": "^2.0.0",
+        "tar.gz": "^1.0.5"
     }
 }
