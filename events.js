@@ -133,7 +133,6 @@ webide.module("file", function(tabs, commands, treeview){
         switch(type){
             case "container": 
                 $(span).contextMenu({menu: "containerContextMenu"}, function(action, el, pos) {
-                    console.log(node);
                     switch(action){
                         case "build": webide.terminal.exec(node.key, "docker-compose build --no-cache --force-rm", "workspace:refresh"); break;
                         case "create": webide.terminal.exec(node.key, "docker-compose create --force-recreate --build ", "workspace:refresh"); break;
@@ -154,18 +153,42 @@ webide.module("file", function(tabs, commands, treeview){
                     switch(action){
                         case "open": break;
                         case "download": webide.file.download(node.key); break;
+                        case "refresh": node.tree.reload(); break;
+                        case "rename": node.editStart(); break;
+                        case "copyfilepath": 
+                            $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
+
+                            var clipboard = new Clipboard("#cbi");
+                            clipboard.on('success', function(e) { e.clearSelection(); });
+                            $("#cbi").click();
+                            clipboard.destroy();
+                            $("#cbi").remove();
+                        break;
                     }
                 });
             break;
-            case "file": 
-                $(span).contextMenu({menu: "fileContextMenu"}, function(action, el, pos) {
+            case "file":                 
+                $(span).contextMenu({menu: "fileContextMenu"}, function(action, el, pos) {   
                     switch(action){
                         case "open": webide.file.open(node.key); break;
                         case "download": webide.file.download(node.key); break;
+                        case "refresh": node.tree.reload(); break;
+                        case "rename": node.editStart(); break;
+                        case "copyfilepath": 
+                            $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
+
+                            var clipboard = new Clipboard("#cbi");
+                            clipboard.on('success', function(e) { e.clearSelection(); });
+                            $("#cbi").click();
+                            clipboard.destroy();
+                            $("#cbi").remove();
+                        break;
                     }
                 });
             break;
         }
+    }, save: function(event, data){
+        $.post("/rename", {filename: data.node.key, newname: data.input.val()}, function(data){});
     }});      
     
     this.extends("file", {

@@ -34,6 +34,7 @@ module.exports = (_this) => {
     
     _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
     _this.insertJs(__dirname + "/diff_match_patch.js");
+    _this.insertJs(__dirname + "/node_modules/clipboard/dist/clipboard.min.js");
     
     //New Project
     _this.commands.addCommand({name: "webide:newproject", bind: {mac: "Command-N", win: "Ctrl-Shift-N"}});
@@ -294,6 +295,22 @@ module.exports = (_this) => {
         }
         else{
             res.status(500).send("Internal error");
+        }
+    });
+    
+    _this.app.post("/rename", (req, res) => {  
+        let _id = (req.user) ? req.user._id : 0,
+            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
+            filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.body.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
+            
+        try{
+            fs.rename(filename, filename.replace(path.basename(filename), req.body.newname), function(err){
+                if(err) res.send(err);
+                else res.send("ok");
+            });
+        }
+        catch(e){
+            res.send(e.message);
         }
     });
     

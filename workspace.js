@@ -103,7 +103,7 @@ module.exports = (_this) => {
                                     case 32768: var gitStatusClass = "git-conflicted"; break;
                                 }
                                 
-                                source.push({title: path.basename(files[keyFile]), extraClasses: gitStatusClass, gitStatus: gitStatus, type: "file", mime: mime.lookup(files[keyFile]), key: files[keyFile].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), folder: false});
+                                source.push({title: path.basename(files[keyFile]), tooltip: files[keyFile].replace(dirname, ""), extraClasses: gitStatusClass, gitStatus: gitStatus, type: "file", mime: mime.lookup(files[keyFile]), key: files[keyFile].replace(/\\/img, "/").replace(dirname.replace(/\\/img, "/"), ""), folder: false});
                             }   
                         } catch(e) { console.log(e.message); }
                     }    

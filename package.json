@@ -1,6 +1,6 @@
 {
     "name": "wi.ide.file",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "WebIDE files management module",
     "author": "André Ferreira <andrehrf@gmail.com>",
     "license": "MIT",
@@ -19,6 +19,7 @@
         "js-yaml": "^3.7.0",
         "docker-compose-remote-api": "^0.1.2",
         "connect-multiparty": "^2.0.0",
-        "tar.gz": "^1.0.5"
+        "tar.gz": "^1.0.5",
+        "clipboard": "^1.5.16"
     }
 }
