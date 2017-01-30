@@ -12,16 +12,16 @@
 
 "use strict";
 
-webide.module("file", function(tabs, commands, treeview){    
+webide.module("file", function(tabs, commands, treeview, settings, terminal, forms){    
     //Register editor type
     tabs.layout.registerComponent('editor', function(container, state){
         container.id = state.id;
         container.getElement().html("<div id='wi-ed-" + state.id + "'></div>");     
-        webide.tabs.itens[state.id].container = container;
+        tabs.itens[state.id].container = container;
                 
         setTimeout(function(){
-            var settings = webide.settings.getByPattern(/^ace\.editor\..*?$/i);
-            var theme = webide.settings.get("ace.editor.theme");                        
+            var settingsObj = settings.getByPattern(/^ace\.editor\..*?$/i);
+            var theme = settings.get("ace.editor.theme");                        
             theme = (!theme) ? "ace/theme/twilight" : "ace/theme/" + theme;
 
             var editor = ace.edit("wi-ed-" + state.id);
@@ -40,11 +40,11 @@ webide.module("file", function(tabs, commands, treeview){
                 }
             }
 
-            webide.tabs.itens[state.id].editor = editor;
+            tabs.itens[state.id].editor = editor;
             editor.resize();
 
-            if(typeof webide.tabs.itens[state.id].cb == "function")
-                setTimeout(function(state, editor){ webide.tabs.itens[state.id].cb(state.id, editor); }, 300, state, editor);
+            if(typeof tabs.itens[state.id].cb == "function")
+                setTimeout(function(state, editor){ tabs.itens[state.id].cb(state.id, editor); }, 300, state, editor);
         }, 100);
     });
     
@@ -52,10 +52,10 @@ webide.module("file", function(tabs, commands, treeview){
     tabs.layout.registerComponent('stream', function(container, state){
         container.id = state.id;
         container.getElement().html("<div id='wi-ed-" + state.id + "'></div><div id='wi-stream-" + state.id + "'></div>");
-        webide.tabs.itens[state.id].container = container;
+        tabs.itens[state.id].container = container;
         
-        if(typeof webide.tabs.itens[state.id].cb == "function")
-            setTimeout(function(state){ webide.tabs.itens[state.id].cb(state.id); }, 300, state);
+        if(typeof tabs.itens[state.id].cb == "function")
+            setTimeout(function(state){ tabs.itens[state.id].cb(state.id); }, 300, state);
     });
     
     commands.add("webide:newproject", function(){
@@ -76,9 +76,9 @@ webide.module("file", function(tabs, commands, treeview){
             
             $(".wi-window-workspace-item:first").click();            
             $(".wi-btn-create").click(function(){
-                if(webide.forms.validate("#newproject-form")){
-                    webide.terminal.create(function(terminal, id, termID){
-                        var data = webide.forms.data("#newproject-form");
+                if(forms.validate("#newproject-form")){
+                    terminal.create(function(terminal, id, termID){
+                        var data = forms.data("#newproject-form");
                         data["id"] = id;
                         data["termID"] = termID;
                         data["ports"] = [];
@@ -126,7 +126,7 @@ webide.module("file", function(tabs, commands, treeview){
     });
     
     this.io.on('workspace:refresh', function (data) {
-        webide.treeview.create(".wi-treeview");
+        treeview.create(".wi-treeview");
     });
     
     treeview.create("#workspace-treeview", {contextmenu: function(node, span, type){
@@ -134,17 +134,17 @@ webide.module("file", function(tabs, commands, treeview){
             case "container": 
                 $(span).contextMenu({menu: "containerContextMenu"}, function(action, el, pos) {
                     switch(action){
-                        case "build": webide.terminal.exec(node.key, "docker-compose build --no-cache --force-rm", "workspace:refresh"); break;
-                        case "create": webide.terminal.exec(node.key, "docker-compose create --force-recreate --build ", "workspace:refresh"); break;
-                        case "start": webide.terminal.exec(node.key, "docker-compose start " + node.data.serviceName, "workspace:refresh"); break;
-                        case "restart": webide.terminal.exec(node.key, "docker-compose restart " + node.data.serviceName, "workspace:refresh"); break;
-                        case "pause": webide.terminal.exec(node.key, "docker-compose pause " + node.data.serviceName, "workspace:refresh"); break;
-                        case "unpause": webide.terminal.exec(node.key, "docker-compose unpause " + node.data.serviceName, "workspace:refresh"); break;
-                        case "stop": webide.terminal.exec(node.key, "docker-compose stop " + node.data.serviceName, "workspace:refresh"); break;
-                        case "up": webide.terminal.exec(node.key, "docker-compose up -d --remove-orphans", "workspace:refresh"); break;
-                        case "down": webide.terminal.exec(node.key, "docker-compose down --remove-orphans", "workspace:refresh"); break;
+                        case "build": terminal.exec(node.key, "docker-compose build --no-cache --force-rm", "workspace:refresh"); break;
+                        case "create": terminal.exec(node.key, "docker-compose create --force-recreate --build ", "workspace:refresh"); break;
+                        case "start": terminal.exec(node.key, "docker-compose start " + node.data.serviceName, "workspace:refresh"); break;
+                        case "restart": terminal.exec(node.key, "docker-compose restart " + node.data.serviceName, "workspace:refresh"); break;
+                        case "pause": terminal.exec(node.key, "docker-compose pause " + node.data.serviceName, "workspace:refresh"); break;
+                        case "unpause": terminal.exec(node.key, "docker-compose unpause " + node.data.serviceName, "workspace:refresh"); break;
+                        case "stop": terminal.exec(node.key, "docker-compose stop " + node.data.serviceName, "workspace:refresh"); break;
+                        case "up": terminal.exec(node.key, "docker-compose up -d --remove-orphans", "workspace:refresh"); break;
+                        case "down": terminal.exec(node.key, "docker-compose down --remove-orphans", "workspace:refresh"); break;
                         case "settings": webide.file.open(node.key + "/docker-compose.yml");  break;
-                        case "exec": webide.terminal.exec(node.key); break;
+                        case "exec": terminal.exec(node.key); break;
                     }
                 });
             break;
@@ -155,6 +155,7 @@ webide.module("file", function(tabs, commands, treeview){
                         case "download": webide.file.download(node.key); break;
                         case "refresh": node.tree.reload(); break;
                         case "rename": node.editStart(); break;
+                        case "openterminal": terminal.exec(node.key, null, null, false, true); break;
                         case "copyfilepath": 
                             $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
 
@@ -174,6 +175,33 @@ webide.module("file", function(tabs, commands, treeview){
                         case "download": webide.file.download(node.key); break;
                         case "refresh": node.tree.reload(); break;
                         case "rename": node.editStart(); break;
+                        case "openterminal": 
+                            terminal.exec(dirname(node.key), basename(node.key), null, false, true); 
+                            
+                            /**
+                             * @see http://locutus.io/php/filesystem/dirname/
+                             * @see http://locutus.io/php/filesystem/basename/
+                             */
+                            function dirname(path){
+                                return path.replace(/\\/g, '/').replace(/\/[^\/]*\/?$/, '');
+                            }
+                            
+                            function basename(path, suffix){
+                                var b = path
+                                var lastChar = b.charAt(b.length - 1)
+
+                                if(lastChar === '/' || lastChar === '\\')
+                                    b = b.slice(0, -1)
+                                
+                                b = b.replace(/^.*[\/\\]/g, '');
+
+                                if(typeof suffix === 'string' && b.substr(b.length - suffix.length) === suffix)
+                                    b = b.substr(0, b.length - suffix.length)
+                                
+                                return b
+                            }
+                            
+                        break;
                         case "copyfilepath": 
                             $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
 
@@ -298,8 +326,8 @@ webide.module("file", function(tabs, commands, treeview){
                             }
                             else{
                                 setTimeout(function(){
-                                    var settings = webide.settings.getByPattern(/^ace\.editor\..*?$/i);
-                                    var theme = webide.settings.get("ace.editor.theme");                        
+                                    var settings = settings.getByPattern(/^ace\.editor\..*?$/i);
+                                    var theme = settings.get("ace.editor.theme");                        
                                     theme = (!theme) ? "ace/theme/twilight" : "ace/theme/" + theme;
 
                                     var editor = ace.edit("wi-ed-" + id);
@@ -308,7 +336,7 @@ webide.module("file", function(tabs, commands, treeview){
                                     
                                     setTimeout(function(){ $("#wi-stream-" + id).remove(); }, 10000);
                                    
-                                    webide.tabs.itens[id].editor = editor;
+                                    tabs.itens[id].editor = editor;
                                     editor.resize(true);
                                 }, 100);
                             }
