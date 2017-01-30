@@ -12,7 +12,7 @@
 
 "use strict";
 
-webide.module("file", function(tabs, commands, treeview, settings, terminal, forms){    
+webide.module("file", function(tabs, commands, treeview, settings, terminal, forms, statusbar){        
     //Register editor type
     tabs.layout.registerComponent('editor', function(container, state){
         container.id = state.id;
@@ -42,6 +42,19 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
 
             tabs.itens[state.id].editor = editor;
             editor.resize();
+            
+            /*setTimeout(function(){
+                $("#wi-ed-" + state.id).minimap({
+                    heightRatio : 0.6,
+                    widthRatio : 0.1,
+                    offsetHeightRatio : 0.080,
+                    offsetWidthRatio : 0.025,
+                    position : "right",
+                    touch: true,
+                    smoothScroll: true,
+                    smoothScrollDelay: 200,
+                });
+            }, 1000);*/
 
             if(typeof tabs.itens[state.id].cb == "function")
                 setTimeout(function(state, editor){ tabs.itens[state.id].cb(state.id, editor); }, 300, state, editor);
@@ -119,6 +132,16 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
             $(".wi-btn-cancel").click(function(){ $(".wi-window-modal").css("display", "none"); });
             $('.tooltip').tooltipster({theme: 'tooltipster-punk'});
         });
+    });
+        
+    commands.add("file:new", function(){
+        webide.file.createTabByMime({
+            filename: "/untitled"+webide.file.newpointer,
+            basename: "untitled"+webide.file.newpointer,
+            mime: "text/plain" 
+        }, "");
+        
+        webide.file.newpointer++;
     });
     
     commands.add("file:save", function(){
@@ -221,6 +244,12 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
     
     this.extends("file", {
         /**
+         * Pointer to new file
+         * @type integer
+         */
+        newpointer: 1,
+        
+        /**
          * List of modes by mimes
          * @type object
          */
@@ -239,7 +268,29 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
             "application/json": "json",
             "application/javascript": "javascript",
             "application/xml": "xml",
+            "text/plain": "text",
             "text/yaml": "yaml"
+        },
+        
+        /**
+         * List of types by mode
+         * @type object
+         */
+        typesByMode: {
+            "actionscript": "Action Script",
+            "applescript": "Apple Script",
+            "batchfile": "Batch",
+            "c_cpp": "C/C++",
+            "csharp": "C#",
+            "css": "CSS",
+            "dart": "Dart",
+            "html": "HTML",
+            "markdown": "Markdown",
+            "json": "JSON",
+            "javascript": "JavaScript",
+            "xml": "XML",
+            "text": "Plain Text",
+            "yaml": "YAML"
         },
         
         /**
@@ -466,6 +517,40 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
                 catch(e){ var mode = "text"; }
                 
                 editor.session.setMode("ace/mode/" + mode);
+                
+                $("#wi-ed-" + id).append("<div class='wi-ace-statusbar'>"+                                         
+                                         "    <div class='wi-ace-statusbar-item-right wi-ace-statusbar-type'>" + _this.typesByMode[mode] + "</div>"+    
+                                         "    <div class='wi-ace-statusbar-item-right wi-ace-statusbar-line'></div>"+
+                                         "    <div class='wi-ace-statusbar-item-right'></div>"+
+                                         "</div>");
+                                 
+                var refreshLine = setInterval(function(){
+                    if(editor)
+                        $("#wi-ed-" + id + " .wi-ace-statusbar-line").html(editor.selection.getCursor().row+":"+editor.selection.getCursor().column);
+                    else
+                        clearInterval(refreshLine);
+                }, 100);
+                                 
+                $("#wi-ed-" + id + " .wi-ace-statusbar .wi-ace-statusbar-type").click(function(){                    
+                    webide.windowRemote("/editor/types", {width: 500, height: 400}, function(){
+                        $("input", ".wi-windows-select").keyup(function(){
+                            var patt = new RegExp($(this).val(), "img");
+                            console.log(patt);
+                            $(".wi-windows-select-item").css("display", "");
+                            
+                            $(".wi-windows-select-item").each(function(){
+                                if(!patt.test($(this).html()))
+                                    $(this).css("display", "none");
+                            }); 
+                        });
+                        
+                        $(".wi-windows-select-item").click(function(){
+                            editor.session.setMode("ace/mode/" + $(this).attr("rel"));
+                            $("#wi-ed-" + id + " .wi-ace-statusbar .wi-ace-statusbar-type").html($(this).html());
+                            webide.closeWindow();
+                        });
+                    });
+                });
                                 
                 switch(mode){
                     case "markdown":

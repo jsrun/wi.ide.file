@@ -1,0 +1,8 @@
+<div class="wi-windows-select">
+    <input type="text" placeholder="Plain Text" />
+    <div class="wi-windows-select-itens">
+        <% for(var key in itens){ %>
+            <div class="wi-windows-select-item" rel="<%= key %>"><%= itens[key] %></div>
+        <% } %>
+    </div>
+</div>

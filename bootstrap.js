@@ -35,10 +35,12 @@ module.exports = (_this) => {
     _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
     _this.insertJs(__dirname + "/diff_match_patch.js");
     _this.insertJs(__dirname + "/node_modules/clipboard/dist/clipboard.min.js");
+    _this.insertJs(__dirname + "/minimap/dist/minimap.min.js");
+    _this.insertCss(__dirname + "/minimap/dist/minimap.min.css");
     
     //New Project
     _this.commands.addCommand({name: "webide:newproject", bind: {mac: "Command-N", win: "Ctrl-Shift-N"}});
-    _this.navbar.addItem("File/New Project...", {command: "webide:newproject"}, 10);
+    _this.navbar.addItem("Project/New Project...", {command: "webide:newproject"}, 10);
     
     _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/newproject.ejs", {projects: _this.run.getRunners()}); });
     _this.app.post("/window/newproject", (req, res) => { 
@@ -129,13 +131,8 @@ module.exports = (_this) => {
     });
        
     //New File
-    _this.commands.addCommand({
-        name: "newfile",
-        bind: {mac: "Command-N", win: "Alt-N"},
-        event: "webide.windowRemote('/window/newfile', {width: 1000, height: 650})"
-    });
-    
-    _this.navbar.addItem("File/New File...", {command: "newfile", divide: true}, 11);
+    _this.commands.addCommand({name: "file:new", bind: {mac: "Command-N", win: "Alt-N"}});
+    _this.navbar.addItem("File/New File...", {command: "file:new", divide: true}, 11);
     
     //Open
     _this.commands.addCommand({
@@ -312,6 +309,25 @@ module.exports = (_this) => {
         catch(e){
             res.send(e.message);
         }
+    });
+    
+    _this.app.get("/editor/types", (req, res) => {  
+        res.render(__dirname + "/types.ejs", {itens: {
+            "actionscript": "Action Script",
+            "applescript": "Apple Script",
+            "batchfile": "Batch",
+            "c_cpp": "C/C++",
+            "csharp": "C#",
+            "css": "CSS",
+            "dart": "Dart",
+            "html": "HTML",
+            "markdown": "Markdown",
+            "json": "JSON",
+            "javascript": "JavaScript",
+            "xml": "XML",
+            "text": "Plain Text",
+            "yaml": "YAML"
+        }});
     });
     
     _this.app.get("/js-yaml.min.js", (req, res) => { res.send(fs.readFileSync(__dirname + "/node_modules/js-yaml/dist/js-yaml.min.js").toString()); });
