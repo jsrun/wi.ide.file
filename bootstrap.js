@@ -28,24 +28,24 @@ let glob = require("glob"),
     multipart = require('connect-multiparty'),
     targz = require('tar.gz'); 
 
-module.exports = (_this) => {  
-    require(__dirname + "/workspace.js")(_this);
-    require(__dirname + "/edit.js")(_this);
+module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {  
+    _this.extend("workspace", require(__dirname + "/workspace.js"));
+    _this.extend("edit", require(__dirname + "/edit.js"));
     
     _this.insertJs(__dirname + "/node_modules/marked/lib/marked.js");
     _this.insertJs(__dirname + "/diff_match_patch.js");
     _this.insertJs(__dirname + "/node_modules/clipboard/dist/clipboard.min.js");
-    _this.insertJs(__dirname + "/minimap/dist/minimap.min.js");
-    _this.insertCss(__dirname + "/minimap/dist/minimap.min.css");
+    //_this.insertJs(__dirname + "/minimap/dist/minimap.min.js");
+    //_this.insertCss(__dirname + "/minimap/dist/minimap.min.css");
     
     //New Project
-    _this.commands.addCommand({name: "webide:newproject", bind: {mac: "Command-N", win: "Ctrl-Shift-N"}});
-    _this.navbar.addItem("Project/New Project...", {command: "webide:newproject"}, 10);
+    commands.addCommand({name: "webide:newproject", bind: {mac: "Command-N", win: "Ctrl-Shift-N"}});
+    navbar.addItem("Project/New Project...", {command: "webide:newproject"}, 10);
     
-    _this.app.get("/window/newproject", (req, res) => { res.render(__dirname + "/newproject.ejs", {projects: _this.run.getRunners()}); });
-    _this.app.post("/window/newproject", (req, res) => { 
+    app.get("/window/newproject", (req, res) => { res.render(__dirname + "/newproject.ejs", {projects: run.getRunners()}); });
+    app.post("/window/newproject", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
-        let socket = _this._.getSocket(req.body.socket);
+        let socket = _.getSocket(req.body.socket);
         let workspaceDirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
         
         if(socket){
@@ -53,7 +53,7 @@ module.exports = (_this) => {
                
             async.series([function(n){//Clone github
                 if(req.body.git.clone){
-                    _this.terminal.write(req.body.termID, "git clone " + req.body.git.clone + " " + (workspaceDirname + "/" + req.body.name), function(){
+                    terminal.write(req.body.termID, "git clone " + req.body.git.clone + " " + (workspaceDirname + "/" + req.body.name), function(){
                         n();
                     });
                 }
@@ -90,11 +90,11 @@ module.exports = (_this) => {
                     n();
                 }*/
             }, function(n){//Make Dockerfile
-                socket.emit("terminal:stdout", req.body.terminal, _this.i18n.__("Preparing the Dockerfile..."));
-                let runner = _this.run.getRunner(req.body.container.image);
+                socket.emit("terminal:stdout", req.body.terminal, i18n.__("Preparing the Dockerfile..."));
+                let runner = run.getRunner(req.body.container.image);
                 
                 if(runner){
-                    var Dockerfile = _this.run.getDockerFile(runner.dockerfile);
+                    var Dockerfile = run.getDockerFile(runner.dockerfile);
                     Dockerfile = Dockerfile.replace("@version", req.body.container.version);
                     fs.writeFileSync(workspaceDirname + "/" + req.body.name + "/Dockerfile", Dockerfile);
                     
@@ -118,11 +118,11 @@ module.exports = (_this) => {
                     execDockerCompose.on('exit', () => { n(); });
                 }
                 else{
-                    socket.emit("terminal:stderr", req.body.terminal, _this.i18n.__("Could not find the selected container image"));
+                    socket.emit("terminal:stderr", req.body.terminal, i18n.__("Could not find the selected container image"));
                     res.send("error");
                 }
             }], function(){//Finish
-                socket.emit("terminal:stdout", req.body.terminal, _this.i18n.__("Workspace created successfully!"));
+                socket.emit("terminal:stdout", req.body.terminal, i18n.__("Workspace created successfully!"));
                 //socket.emit("cwd", {cwd: "/" + req.body.name, _id: req.body.terminal});
                 socket.emit("workspace:refresh");
                 res.send("ok");
@@ -131,20 +131,46 @@ module.exports = (_this) => {
     });
        
     //New File
-    _this.commands.addCommand({name: "file:new", bind: {mac: "Command-N", win: "Alt-N"}});
-    _this.navbar.addItem("File/New File...", {command: "file:new", divide: true}, 11);
+    commands.addCommand({name: "file:new", bind: {mac: "Command-N", win: "Alt-N"}});
+    navbar.addItem("File/New File...", {command: "file:new"}, 11);
+    
+    //New Template
+    navbar.addItem("File/New Template...", {divide: true, submenu: [
+        {
+            display: "Node.js + Express",
+            command: "webide:new:nodeexpress",
+            divide: true
+        },
+        {
+            display: "WebIDE Module",
+            command: "webide:new:webidemodule"
+        },
+        {
+            display: "WebIDE Plugin",
+            command: "webide:new:webideplugin",
+            divide: true
+        },
+        {
+            display: "Web Extension",
+            command: "webide:new:webextension"
+        },
+        {
+            display: "Web Component",
+            command: "webide:new:webcomponent"
+        }
+    ]}, 11);
     
     //Open
-    _this.commands.addCommand({
+    commands.addCommand({
         name: "open",
         bind: {mac: "Command-E", win: "Ctrl-E"},
         event: "webide.windowRemote('/window/open', {'width': 1000, 'height': 550})"
     });
     
-    _this.navbar.addItem("File/Open...", {command: "open"}, 12);
-    _this.commands.addCommand({name: "openrecent"});
+    navbar.addItem("File/Open...", {command: "open"}, 12);
+    commands.addCommand({name: "openrecent"});
     
-    _this.navbar.addItem("File/Open Recent", {
+    navbar.addItem("File/Open Recent", {
         command: "openrecent",
         class: "wi-openrecent",
         submenu: true,
@@ -152,39 +178,39 @@ module.exports = (_this) => {
     }, 400);
     
     //Save
-    _this.commands.addCommand({name: "file:save", bind: {mac: "Command-S", win: "Ctrl-S"}});
-    _this.navbar.addItem("File/Save", {command: "file:save"}, 13);
+    commands.addCommand({name: "file:save", bind: {mac: "Command-S", win: "Ctrl-S"}});
+    navbar.addItem("File/Save", {command: "file:save"}, 13);
     
     //Save As
-    _this.commands.addCommand({
+    commands.addCommand({
         name: "file:saveas",
         bind: {mac: "Command-Shift-S", win: "Ctrl-Shift-S"}
     });
     
-    _this.navbar.addItem("File/Save As...", {command: "file:saveas"}, 14);
+    navbar.addItem("File/Save As...", {command: "file:saveas"}, 14);
     
     //Save All
-    _this.navbar.addItem("File/Save All", {command: "file:saveall", divide: true}, 15);
+    navbar.addItem("File/Save All", {command: "file:saveall", divide: true}, 15);
     
     //Upload local files
-    _this.navbar.addItem("File/Upload Local Files...", {command: "file:uploadlocalfiles"}, 16);
-    _this.navbar.addItem("File/Download Project...", {command: "file:downloadproject", divide: true}, 17);
+    navbar.addItem("File/Upload Local Files...", {command: "file:uploadlocalfiles"}, 16);
+    navbar.addItem("File/Download Project...", {command: "file:downloadproject", divide: true}, 17);
     
     //Close 
-    _this.commands.addCommand({
+    commands.addCommand({
         name: "file:closefile",
         bind: {mac: "Option-W", win: "Alt-W"}
     });
     
-    _this.commands.addCommand({
+    commands.addCommand({
         name: "file:closeallfiles",
         bind: {mac: "Option-Shift-W", win: "Alt-W"}
     });
     
-    _this.navbar.addItem("File/Close File", {command: "file:closefile"}, 18);
-    _this.navbar.addItem("File/Close All Files", {command: "file:closeallfiles"}, 19);
+    navbar.addItem("File/Close File", {command: "file:closefile"}, 18);
+    navbar.addItem("File/Close All Files", {command: "file:closeallfiles"}, 19);
     
-    _this.app.get("/open", (req, res) => { 
+    app.get("/open", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0,
             dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
@@ -220,7 +246,7 @@ module.exports = (_this) => {
         }        
     });
     
-    _this.app.get("/data", (req, res) => {        
+    app.get("/data", (req, res) => {        
         let _id = (req.user) ? req.user._id : 0,
             dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
@@ -233,7 +259,7 @@ module.exports = (_this) => {
         res.sendFile(filename, {dotfiles: "allow", headers: {"Content-Type": mimeFile}});
     });
     
-    _this.app.get("/stream", (req, res) => {        
+    app.get("/stream", (req, res) => {        
         let lines = "",
             _id = (req.user) ? req.user._id : 0,
             dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),       
@@ -255,7 +281,7 @@ module.exports = (_this) => {
         });
     });
     
-    _this.app.get("/download", (req, res) => {        
+    app.get("/download", (req, res) => {        
         let _id = (req.user) ? req.user._id : 0,
             dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
@@ -276,7 +302,7 @@ module.exports = (_this) => {
         }
     });
     
-    _this.app.post("/save", multipart(), (req, res) => {        
+    app.post("/save", multipart(), (req, res) => {        
         if(typeof req.files.file == "object"){
             let _id = (req.user) ? req.user._id : 0,
                 dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
@@ -295,7 +321,7 @@ module.exports = (_this) => {
         }
     });
     
-    _this.app.post("/rename", (req, res) => {  
+    app.post("/rename", (req, res) => {  
         let _id = (req.user) ? req.user._id : 0,
             dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.body.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
@@ -311,7 +337,7 @@ module.exports = (_this) => {
         }
     });
     
-    _this.app.get("/editor/types", (req, res) => {  
+    app.get("/editor/types", (req, res) => {  
         res.render(__dirname + "/types.ejs", {itens: {
             "actionscript": "Action Script",
             "applescript": "Apple Script",
@@ -330,6 +356,6 @@ module.exports = (_this) => {
         }});
     });
     
-    _this.app.get("/js-yaml.min.js", (req, res) => { res.send(fs.readFileSync(__dirname + "/node_modules/js-yaml/dist/js-yaml.min.js").toString()); });
-    _this.app.get("/docker-compose-editor", (req, res) => { res.render(__dirname + "/dockercompose.editor.ejs"); });
+    app.get("/js-yaml.min.js", (req, res) => { res.send(fs.readFileSync(__dirname + "/node_modules/js-yaml/dist/js-yaml.min.js").toString()); });
+    app.get("/docker-compose-editor", (req, res) => { res.render(__dirname + "/dockercompose.editor.ejs"); });
 };

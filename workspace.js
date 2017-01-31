@@ -19,15 +19,15 @@ let glob = require("glob"),
     mime = require('mime-types'),
     git = require("nodegit"); 
 
-module.exports = (_this) => {  
+module.exports = (sidebar, app) => {  
     //Workspace
-    _this.sidebar.addItem("workspace", {
+    sidebar.addItem("workspace", {
         position: "left",
         display: "Workspace",
         panel: fs.readFileSync(__dirname + "/workspace.ejs")
     }, 100);
         
-    _this.app.get("/workspace", (req, res) => { 
+    app.get("/workspace", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
         var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
         var dirnameSub = (req.query.key) ? decodeURI(req.query.key) : "";
@@ -146,7 +146,6 @@ module.exports = (_this) => {
                     } catch(e) { console.log(e.message); }
                 } 
             }   
-
             
             var persistent = setInterval(function(){
                 if(progress.length <= 0){
