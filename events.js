@@ -18,6 +18,11 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
         container.id = state.id;
         container.getElement().html("<div id='wi-ed-" + state.id + "'></div>");     
         tabs.itens[state.id].container = container;
+        
+        container.on("resize", function(){
+            if(typeof tabs.itens[state.id].editor == "object")
+                tabs.itens[state.id].editor.resize();
+        });
                 
         setTimeout(function(){
             var settingsObj = settings.getByPattern(/^ace\.editor\..*?$/i);
