@@ -24,11 +24,12 @@ let glob = require("glob"),
     DockerCompose = require("docker-compose-remote-api"),
     mime = require('mime-types'),
     git = require("nodegit"),
+    spawn = require('child_process').spawn,
     promisify = require('promisify'),
     multipart = require('connect-multiparty'),
     targz = require('tar.gz'); 
 
-module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {  
+module.exports = (_this, _, i18n, app, commands, navbar, terminal, run, env) => {  
     _this.extend("workspace", require(__dirname + "/workspace.js"));
     _this.extend("edit", require(__dirname + "/edit.js"));
     
@@ -38,69 +39,65 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     //_this.insertJs(__dirname + "/minimap/dist/minimap.min.js");
     //_this.insertCss(__dirname + "/minimap/dist/minimap.min.css");
     
-    //New Project
-    commands.addCommand({name: "webide:newproject", bind: {mac: "Command-N", win: "Ctrl-Shift-N"}});
-    navbar.addItem("Project/New Project...", {command: "webide:newproject"}, 10);
+    navbar.import(__dirname + "/navbar.json");
+    commands.import(__dirname + "/commands.json");
     
+    navbar.addItem("File/Open Recent", {
+        command: "openrecent",
+        class: "wi-openrecent",
+        submenu: [],
+        divide: true
+    }, 14);
+         
+    //Routes
     app.get("/window/newproject", (req, res) => { res.render(__dirname + "/newproject.ejs", {projects: run.getRunners()}); });
     app.post("/window/newproject", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0;
         let socket = _.getSocket(req.body.socket);
         let workspaceDirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
+        let term = terminal.get(req.body.termID);
         
         if(socket){
-            //socket.emit("terminal:stdout", req.body.id, "Starting workspace creation...");
+            term.write(i18n.__("Creating workspace..."));
                
             async.series([function(n){//Clone github
-                if(req.body.git.clone){
-                    terminal.write(req.body.termID, "git clone " + req.body.git.clone + " " + (workspaceDirname + "/" + req.body.name), function(){
-                        n();
-                    });
+                if(req.body.git.clone){         
+                    let gitclone = spawn("git", ["clone", req.body.git.clone, "./" + req.body.name], {cwd: workspaceDirname});
+                    gitclone.on('close', (code) => { n(); });
                 }
                 else{
                     n();
                 }
             }, function(n){//Make dir!
-                socket.emit("stdout", req.body.terminal, "Creating directory...");
-                /*if(!req.body.git.clone){
-                    socket.emit("stdout", req.body.terminal, "Creating directory...");
-
+                if(!req.body.git.clone){
                     fs.stat(workspaceDirname + "/" + req.body.name, function(err, stats){
                         if(stats){
                             if(stats.isDirectory()){
-                                socket.emit("terminal:stderr", req.body.terminal, _this.i18n.__("Error trying to create workspace, there is already a directory with the same name"));
+                                term.write(i18n.__("Error trying to create workspace, there is already a directory with the same name"));
                                 res.send("error");
                             }
                             else{
-                                mkdirp(workspaceDirname + "/" + req.body.name, function (err) { 
-                                    socket.emit("terminal:stdout", req.body.terminal, _this.i18n.__("Directory created successfully!"));
-                                    n();
-                                });
+                                mkdirp(workspaceDirname + "/" + req.body.name, function (err) { n(); });
                             }
                         }
                         else{
-                            mkdirp(workspaceDirname + "/" + req.body.name, function (err) { 
-                                socket.emit("terminal:stdout", req.body.terminal, _this.i18n.__("Directory created successfully!"));
-                                n();
-                            });
+                            mkdirp(workspaceDirname + "/" + req.body.name, function (err) { n(); });
                         }
                     });
                 }
                 else{
                     n();
-                }*/
+                }
             }, function(n){//Make Dockerfile
-                socket.emit("terminal:stdout", req.body.terminal, i18n.__("Preparing the Dockerfile..."));
                 let runner = run.getRunner(req.body.container.image);
                 
                 if(runner){
                     var Dockerfile = run.getDockerFile(runner.dockerfile);
                     Dockerfile = Dockerfile.replace("@version", req.body.container.version);
                     fs.writeFileSync(workspaceDirname + "/" + req.body.name + "/Dockerfile", Dockerfile);
-                    
-                    
+                                        
                     var dockerComposer = {version: "3", services: {}};
-                    dockerComposer.services[req.body.name] = runner.script;
+                    dockerComposer.services[req.body.name.toLowerCase()] = runner.script;
                     
                     for(let key in req.body.ports){
                         if(typeof dockerComposer.services[req.body.name]["ports"] != "object")
@@ -110,109 +107,23 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
                     }
                     
                     fs.writeFileSync(workspaceDirname + "/" + req.body.name + "/docker-compose.yml", yaml.safeDump(dockerComposer));
-                    
-                    //Build docker
-                    var execDockerCompose = exec("docker-compose up -d --build --force-recreate", { cwd: workspaceDirname + "/" + req.body.name });
-                    execDockerCompose.stdout.on('data', (data) => { socket.emit("terminal:stdout", req.body.terminal, data.toString()); });
-                    execDockerCompose.stderr.on('data', (data) => { socket.emit("terminal:stderr", req.body.terminal, data.toString()); });
-                    execDockerCompose.on('exit', () => { n(); });
+                    n();
                 }
                 else{
-                    socket.emit("terminal:stderr", req.body.terminal, i18n.__("Could not find the selected container image"));
+                    term.write(i18n.__("Could not find the selected container image"));
                     res.send("error");
                 }
             }], function(){//Finish
-                socket.emit("terminal:stdout", req.body.terminal, i18n.__("Workspace created successfully!"));
-                //socket.emit("cwd", {cwd: "/" + req.body.name, _id: req.body.terminal});
+                term.write("\n cd " + workspaceDirname + "/" + req.body.name + "\n && clear \n");
                 socket.emit("workspace:refresh");
                 res.send("ok");
             });
         }        
-    });
-       
-    //New File
-    commands.addCommand({name: "file:new", bind: {mac: "Command-N", win: "Alt-N"}});
-    navbar.addItem("File/New File...", {command: "file:new"}, 11);
-    
-    //New Template
-    navbar.addItem("File/New Template...", {divide: true, submenu: [
-        {
-            display: "Node.js + Express",
-            command: "webide:new:nodeexpress",
-            divide: true
-        },
-        {
-            display: "WebIDE Module",
-            command: "webide:new:webidemodule"
-        },
-        {
-            display: "WebIDE Plugin",
-            command: "webide:new:webideplugin",
-            divide: true
-        },
-        {
-            display: "Web Extension",
-            command: "webide:new:webextension"
-        },
-        {
-            display: "Web Component",
-            command: "webide:new:webcomponent"
-        }
-    ]}, 11);
-    
-    //Open
-    commands.addCommand({
-        name: "open",
-        bind: {mac: "Command-E", win: "Ctrl-E"},
-        event: "webide.windowRemote('/window/open', {'width': 1000, 'height': 550})"
-    });
-    
-    navbar.addItem("File/Open...", {command: "open"}, 12);
-    commands.addCommand({name: "openrecent"});
-    
-    navbar.addItem("File/Open Recent", {
-        command: "openrecent",
-        class: "wi-openrecent",
-        submenu: true,
-        divide: true
-    }, 400);
-    
-    //Save
-    commands.addCommand({name: "file:save", bind: {mac: "Command-S", win: "Ctrl-S"}});
-    navbar.addItem("File/Save", {command: "file:save"}, 13);
-    
-    //Save As
-    commands.addCommand({
-        name: "file:saveas",
-        bind: {mac: "Command-Shift-S", win: "Ctrl-Shift-S"}
-    });
-    
-    navbar.addItem("File/Save As...", {command: "file:saveas"}, 14);
-    
-    //Save All
-    navbar.addItem("File/Save All", {command: "file:saveall", divide: true}, 15);
-    
-    //Upload local files
-    navbar.addItem("File/Upload Local Files...", {command: "file:uploadlocalfiles"}, 16);
-    navbar.addItem("File/Download Project...", {command: "file:downloadproject", divide: true}, 17);
-    
-    //Close 
-    commands.addCommand({
-        name: "file:closefile",
-        bind: {mac: "Option-W", win: "Alt-W"}
-    });
-    
-    commands.addCommand({
-        name: "file:closeallfiles",
-        bind: {mac: "Option-Shift-W", win: "Alt-W"}
-    });
-    
-    navbar.addItem("File/Close File", {command: "file:closefile"}, 18);
-    navbar.addItem("File/Close All Files", {command: "file:closeallfiles"}, 19);
-    
+    });                  
+                
     app.get("/open", (req, res) => { 
         let _id = (req.user) ? req.user._id : 0,
-            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
             
         if(/^.*?\.workspaces[\\|\/][0-9][\\|\/].*?[\\|\/].*?$/i.test(filename)){
@@ -248,7 +159,7 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     
     app.get("/data", (req, res) => {        
         let _id = (req.user) ? req.user._id : 0,
-            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
             
         var mimeFile = mime.lookup(filename);
@@ -262,7 +173,7 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     app.get("/stream", (req, res) => {        
         let lines = "",
             _id = (req.user) ? req.user._id : 0,
-            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),       
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20'))); 
         
         fs.stat(filename, function(err, stats){
@@ -283,7 +194,7 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     
     app.get("/download", (req, res) => {        
         let _id = (req.user) ? req.user._id : 0,
-            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),        
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.query.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
             
         if(fs.statSync(filename).isFile()){
@@ -305,7 +216,7 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     app.post("/save", multipart(), (req, res) => {        
         if(typeof req.files.file == "object"){
             let _id = (req.user) ? req.user._id : 0,
-                dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
+                dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
         
             var inp = fs.createReadStream(req.files.file.path),
                 out = fs.createWriteStream(dirname + req.files.file.originalFilename);
@@ -323,7 +234,7 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
     
     app.post("/rename", (req, res) => {  
         let _id = (req.user) ? req.user._id : 0,
-            dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
             filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.body.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
             
         try{
@@ -335,6 +246,26 @@ module.exports = (_this, _, i18n, app, commands, navbar, terminal, run) => {
         catch(e){
             res.send(e.message);
         }
+    });
+    
+    app.delete("/delete", (req, res) => {
+        let _id = (req.user) ? req.user._id : 0,
+            socket = _.getSocket(req.body.socket),
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
+            filename = fs.realpathSync(dirname + "/" + decodeURIComponent((req.body.filename + '').replace(/%(?![\da-f]{2})/gi, function () {return '%25'}).replace(/\+/g, '%20')));
+            
+        try{
+            if(fs.statSync(filename).isFile()){
+                fs.unlink(filename, (err) => {
+                    socket.emit("workspace:refresh");
+                });
+            }
+            else if(fs.statSync(filename).isDirectory()){
+                
+            }
+        }catch(e) { console.log(e.message); }
+        
+        res.send("ok");
     });
     
     app.get("/editor/types", (req, res) => {  

@@ -115,8 +115,8 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
                             if(bind)
                                 data["ports"].push(bind);
                         })
-                                                
-                        webide.sendJSON($("#newproject-form").attr("action"), data);//Request create new project
+                           
+                        setTimeout(function(data){ webide.sendJSON($("#newproject-form").attr("action"), data); }, 1000, data); //Request create new project
                         $(".wi-window-modal").css("display", "none");//Hide modal
                     });
                 }
@@ -164,25 +164,35 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
                     switch(action){
                         case "build": terminal.exec(node.key, "docker-compose build --no-cache --force-rm", "workspace:refresh"); break;
                         case "create": terminal.exec(node.key, "docker-compose create --force-recreate --build ", "workspace:refresh"); break;
-                        case "start": terminal.exec(node.key, "docker-compose start " + node.data.serviceName, "workspace:refresh"); break;
-                        case "restart": terminal.exec(node.key, "docker-compose restart " + node.data.serviceName, "workspace:refresh"); break;
-                        case "pause": terminal.exec(node.key, "docker-compose pause " + node.data.serviceName, "workspace:refresh"); break;
-                        case "unpause": terminal.exec(node.key, "docker-compose unpause " + node.data.serviceName, "workspace:refresh"); break;
-                        case "stop": terminal.exec(node.key, "docker-compose stop " + node.data.serviceName, "workspace:refresh"); break;
+                        case "start": terminal.exec(node.key, "docker-compose start " + node.data.serviceName.toLowerCase(), "workspace:refresh"); break;
+                        case "restart": terminal.exec(node.key, "docker-compose restart " + node.data.serviceName.toLowerCase(), "workspace:refresh"); break;
+                        case "pause": terminal.exec(node.key, "docker-compose pause " + node.data.serviceName.toLowerCase(), "workspace:refresh"); break;
+                        case "unpause": terminal.exec(node.key, "docker-compose unpause " + node.data.serviceName.toLowerCase(), "workspace:refresh"); break;
+                        case "stop": terminal.exec(node.key, "docker-compose stop " + node.data.serviceName.toLowerCase(), "workspace:refresh"); break;
                         case "up": terminal.exec(node.key, "docker-compose up -d --remove-orphans", "workspace:refresh"); break;
                         case "down": terminal.exec(node.key, "docker-compose down --remove-orphans", "workspace:refresh"); break;
                         case "settings": webide.file.open(node.key + "/docker-compose.yml");  break;
-                        case "exec": terminal.exec(node.key); break;
+                        case "exec": terminal.exec(node.key, null, null, false, true); break;
+                        case "delete": 
+                            webide.confirm("Remove folder", "Do you really want to remove the container " + node.data.serviceName + " ?", {width: 400, height: 130}, function(){
+                                webide.file.delete(node.key);
+                            }); 
+                        break;
                     }
                 });
             break;
             case "folder": 
                 $(span).contextMenu({menu: "diretoryContextMenu"}, function(action, el, pos) {
                     switch(action){
-                        case "open": break;
+                        case "open": $(node.span).click(); break;
                         case "download": webide.file.download(node.key); break;
                         case "refresh": node.tree.reload(); break;
                         case "rename": node.editStart(); break;
+                        case "delete": 
+                            webide.confirm("Remove folder", "Do you really want to remove the folder " + node.key + " ?", {width: 400, height: 130}, function(){
+                                webide.file.delete(node.key);
+                            }); 
+                        break;
                         case "openterminal": terminal.exec(node.key, null, null, false, true); break;
                         case "copyfilepath": 
                             $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
@@ -203,6 +213,11 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
                         case "download": webide.file.download(node.key); break;
                         case "refresh": node.tree.reload(); break;
                         case "rename": node.editStart(); break;
+                        case "delete": 
+                            webide.confirm("Remove file", "Do you really want to remove the file " + node.key + " ?", {width: 400, height: 130}, function(){
+                                webide.file.delete(node.key);
+                            }); 
+                        break;
                         case "openterminal": 
                             terminal.exec(dirname(node.key), basename(node.key), null, false, true); 
                             
@@ -228,7 +243,6 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
                                 
                                 return b
                             }
-                            
                         break;
                         case "copyfilepath": 
                             $("body").append("<button style='display:none' data-clipboard-text='"+node.key+"' id='cbi'></button>");
@@ -629,6 +643,16 @@ webide.module("file", function(tabs, commands, treeview, settings, terminal, for
             var blob = new Blob([content], {type: mime, size: content.length});
             formData.append('file', blob, filename);                   
             $.ajax({url: '/save', data: formData, cache: false, contentType: false, processData: false, type: 'POST', success: fn});
+        },
+        
+        /**
+         * Functio to remove file, diretory, container
+         * 
+         * @return void
+         */
+        delete: function(filename){
+            filename = encodeURIComponent(filename).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');//Bugfix @see http://locutus.io/php/url/urlencode/
+            webide.getContentsJSON("DELETE", "/delete", {filename: filename});
         }
     });
 });

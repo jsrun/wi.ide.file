@@ -1,0 +1,17 @@
+[
+    {"name": "webide:newproject", "bind": {"mac": "Command-N", "win": "Ctrl-Shift-N"}},
+    {"name": "webide:new", "bind": {"mac": "Command-N", "win": "Alt-N"}},
+    {"name": "webide:open", "bind": {"mac": "Command-E", "win": "Ctrl-E"}, "event": "webide.windowRemote('/window/open', {'width': 1000, 'height': 550})"},
+    {"name": "webide:save", "bind": {"mac": "Command-S", "win": "Ctrl-S"}},
+    {"name": "webide:saveas", "bind": {"mac": "Command-Shift-S", "win": "Ctrl-Shift-S"}},
+    {"name": "webide:closefile", "bind": {"mac": "Option-W", "win": "Alt-W"}},
+    {"name": "file:closeallfiles", "bind": {"mac": "Option-Shift-W", "win": "Alt-W"}},
+    {"name": "webide:saveas", "bind": {"mac": "Command-Shift-S", "win": "Ctrl-Shift-S"}},
+    {"name": "webide:undo", "bind": {"mac": "Command-Z", "win": "Ctrl-Z"}},
+    {"name": "webide:redo", "bind": {"mac": "Command-Y", "win": "Ctrl-Y"}},
+    {"name": "webide:cut", "bind": {"mac": "Command-X", "win": "Ctrl-X"}},
+    {"name": "webide:copy", "bind": {"mac": "Command-C", "win": "Ctrl-C"}},
+    {"name": "webide:paste", "bind": {"mac": "Command-V", "win": "Ctrl-V"}}
+]
+    
+

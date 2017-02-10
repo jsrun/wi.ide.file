@@ -19,7 +19,7 @@ let glob = require("glob"),
     mime = require('mime-types'),
     git = require("nodegit"); 
 
-module.exports = (sidebar, app) => {  
+module.exports = (sidebar, app, env) => {  
     //Workspace
     sidebar.addItem("workspace", {
         position: "left",
@@ -28,13 +28,16 @@ module.exports = (sidebar, app) => {
     }, 100);
         
     app.get("/workspace", (req, res) => { 
-        let _id = (req.user) ? req.user._id : 0;
-        var dirname = fs.realpathSync(__dirname + "/../../.workspaces/" + _id);
-        var dirnameSub = (req.query.key) ? decodeURI(req.query.key) : "";
+        let _id = (req.user) ? req.user._id : 0,
+            dirname = (env == "dev") ? fs.realpathSync(__dirname + "/../../") : fs.realpathSync(__dirname + "/../../.workspaces/" + _id),
+            dirnameSub = (req.query.key) ? decodeURI(req.query.key) : "";
         
         if(/^.*?\.workspaces[\\|\/][0-9][\\|\/].*?[\\|\/].*?$/i.test(dirname + dirnameSub + "/")){
             var projectName = (dirname + dirnameSub + "/").match(/^.*?\.workspaces[\\|\/][0-9][\\|\/](.*?)[\\|\/].*?$/i)[1];
-            var dirnameProject =(projectName) ? (dirname + "/" + projectName) : dirname;
+            var dirnameProject = (projectName) ? (dirname + "/" + projectName) : dirname;
+        }
+        else{
+            dirnameProject = dirname;
         }
          
         glob(dirname + dirnameSub + "/*", {stat: false, cache: false, dot: true}, function (er, files) {

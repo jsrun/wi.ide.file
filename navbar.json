@@ -1,0 +1,26 @@
+[
+    {"path": "Project/New Project...", "command": "webide:newproject", "index": 10},
+    {"path": "File/New File...", "command": "file:new", "index": 11},
+    {"path": "File/New Template...", "divide": true, "index": 12,
+        "submenu": [
+            {"display": "Node.js + Express", "command": "webide:new:nodeexpress", "divide": true },
+            {"display": "WebIDE Module", "command": "webide:new:webidemodule"},
+            {"display": "WebIDE Plugin", "command": "webide:new:webideplugin", "divide": true},
+            {"display": "Web Extension", "command": "webide:new:webextension"},
+            {"display": "Web Component", "command": "webide:new:webcomponent"}
+        ]
+    },
+    {"path": "File/Open...", "command": "webide:open","index": 13},
+    {"id": "navbar_edit_save", "path": "File/Save", "command": "webide:save", "disabled": true,"index": 15},
+    {"id": "navbar_edit_saveas", "path": "File/Save As...", "command": "webide:saveas", "disabled": true,"index": 16},
+    {"path": "File/Save All", "command": "webide:saveall", "divide": true, "index": 17},
+    {"path": "File/Upload Local Files...", "command": "webide:uploadlocalfiles", "index": 18},
+    {"path": "File/Download Project...", "command": "webide:downloadproject", "divide": true, "index": 19},
+    {"path": "File/Close File", "command": "webide:closefile", "index": 20},
+    {"path": "File/Close All Files", "command": "webide:closeallfiles", "index": 21},
+    {"id": "navbar_edit_undo", "path": "Edit/Undo", "command": "webide:undo", "disabled": true, "index": 200},
+    {"id": "navbar_edit_redo", "path": "Edit/Redo", "command": "webide:redo", "disabled": true, "divide": true, "index": 201},
+    {"id": "navbar_edit_cut", "path": "Edit/Cut", "command": "webide:cut", "disabled": true, "index": 202},
+    {"id": "navbar_edit_copy", "path": "Edit/Copy", "command": "webide:copy", "disabled": true, "index": 203},
+    {"id": "navbar_edit_paste", "path": "Edit/Paste", "command": "webide:paste", "disabled": true, "index": 204}
+]
